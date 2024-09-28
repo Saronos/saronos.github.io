@@ -22,6 +22,12 @@ body {
     top: 0;
     left: 0;
     height: 100%;
+    transform: translateX(0);
+    transition: transform 0.3s ease-in-out;
+}
+
+.sidebar.show {
+    transform: translateX(-240px);
 }
 
 .sidebar .logo img {
@@ -41,6 +47,19 @@ body {
     font-size: 16px;
 }
 
+.menu-toggle {
+    display: none;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background-color: #004481;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    z-index: 2;
+}
+
 .main-content {
     margin-left: 240px;
     flex: 1;
@@ -58,6 +77,11 @@ body {
     top: 0;
     left: 240px;
     z-index: 1;
+    transition: transform 0.3s ease-in-out;
+}
+
+.header.show {
+    transform: translateX(-240px);
 }
 
 .top-menu ul {
@@ -189,44 +213,25 @@ canvas {
 
 @media screen and (max-width: 768px) {
     .sidebar {
-        width: 60px;
-        padding: 10px;
+        transform: translateX(-240px);
     }
 
-    .sidebar ul li {
-        font-size: 14px;
+    .menu-toggle {
+        display: block;
     }
 
     .main-content {
-        margin-left: 60px;
+        margin-left: 0;
         padding: 10px;
     }
 
     .header {
-        width: calc(100% - 60px);
-        left: 60px;
-        padding: 0 10px;
+        width: 100%;
+        left: 0;
     }
 
-    .top-menu ul {
-        gap: 10px;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-    }
-
-    .balance-section {
-        padding: 15px;
-    }
-
-    .balance-value {
-        font-size: 24px;
-    }
-
-    .transaction-details {
-        font-size: 14px;
-    }
-
-    .transaction-amount {
-        font-size: 14px;
+    .header.show,
+    .sidebar.show {
+        transform: translateX(0);
     }
 }
