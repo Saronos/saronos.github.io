@@ -71,13 +71,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // Actualizar la hora cada vez que se recarga la página
     window.onload = updateTime;
 
-    // Desplegar/Ocultar menú en pantallas pequeñas
-    const menuToggle = document.getElementById('menu-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const header = document.getElementById('header');
-
-    menuToggle.addEventListener('click', function () {
-        sidebar.classList.toggle('active');
-        header.classList.toggle('active');
+    // Manejar el botón de menú desplegable
+    document.getElementById('menu-toggle').addEventListener('click', function () {
+        const sidebar = document.getElementById('sidebar');
+        const header = document.getElementById('header');
+        sidebar.classList.toggle('show');
+        header.classList.toggle('show');
     });
 });
