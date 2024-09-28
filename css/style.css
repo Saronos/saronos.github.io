@@ -1,0 +1,185 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f4f4f4;
+}
+
+.sidebar {
+    width: 240px;
+    background-color: #003a70;
+    color: #fff;
+    padding: 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+}
+
+.sidebar .logo img {
+    width: 150px;
+    margin-bottom: 20px;
+}
+
+.sidebar ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.sidebar ul li {
+    margin: 15px 0;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.main-content {
+    margin-left: 240px;
+    flex: 1;
+    padding: 20px;
+}
+
+.header {
+    background-color: #004481; /* Color de fondo de la barra superior */
+    padding: 0; /* Eliminar padding para que el menú superior esté pegado al menú lateral */
+    display: flex;
+    align-items: center;
+    height: 60px;
+    width: calc(100% - 240px);
+    position: fixed;
+    top: 0;
+    left: 240px; /* Alinear el menú superior justo después del menú lateral */
+    z-index: 1;
+}
+
+.top-menu ul {
+    list-style-type: none;
+    display: flex;
+    gap: 20px;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    align-items: center;
+}
+
+.top-menu ul li a {
+    text-decoration: none;
+    color: white; /* Texto en blanco para mayor contraste */
+    font-weight: bold;
+    padding: 20px 15px;
+    display: block;
+    height: 100%;
+}
+
+.top-menu ul li a.highlighted-access {
+    background-color: #028484; /* Fondo de "Accesos Destacados" */
+    border-radius: 0; /* No redondear las esquinas para mejor integración */
+}
+
+.balance-section {
+    margin-top: 80px; /* Ajustar el margen superior para no quedar debajo del menú */
+    margin-bottom: 20px;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.balance-info {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 20px;
+}
+
+.balance-title {
+    font-size: 18px;
+    color: #555;
+}
+
+.balance-value {
+    font-size: 28px;
+    color: #003a70;
+}
+
+.movements-section {
+    margin-top: 20px;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.movements-section ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.transaction {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #e0e0e0;
+    transition: background-color 0.3s ease;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 0.5s ease-in, transform 0.5s ease-in;
+}
+
+.transaction.fade-in {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.transaction:hover {
+    background-color: #f1f1f1;
+}
+
+.transaction-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.transaction-date {
+    font-size: 12px;
+    color: #888;
+}
+
+.transaction-description {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.transaction-amount {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.transaction-amount.positive {
+    color: #4caf50;
+}
+
+.transaction-amount.negative {
+    color: #e53935;
+}
+
+.graph-section {
+    margin-top: 20px;
+    background-color: #f4f4f4;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+canvas {
+    max-width: 100%;
+}

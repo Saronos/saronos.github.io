@@ -1,0 +1,120 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBVA - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="script.js"></script>
+<link type="text/css" rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <img src="https://web.bbva.es/packages/assets/img/coronita/bbva-logo.png?v=cf4b6bb0" alt="BBVA Logo">
+        </div>
+        <ul>
+            <li>Posición Global</li>
+            <li>Hacer una operación</li>
+            <li>Cuentas y Tarjetas</li>
+            <li>Hipotecas y Préstamos</li>
+            <li>Ahorro e Inversión</li>
+            <li>Seguros</li>
+            <li>Quiero contratar</li>
+            <li>Mi gestor</li>
+            <li>Mi buzón</li>
+            <li>Mi perfil</li>
+            <li>Tu ahorro energético</li>
+            <li>Invita a un amigo</li>
+            <li>Buscador</li>
+            <li>Atención al cliente</li>
+            <li>Oficinas y cajeros</li>
+            <li>Idioma</li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        <header class="header">
+            <nav class="top-menu">
+                <ul>
+                    <li><a href="#" class="highlighted-access">Accesos Destacados</a></li>
+                    <li><a href="#">Información Fiscal</a></li>
+                    <li><a href="#">Operativas de Emergencia</a></li>
+                    <li><a href="#">Tramitación de Herencias</a></li>
+                    <li><a href="#">Accesibilidad</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <section class="balance-section">
+            <h2>Buenas tardes, SERGIO</h2>
+            <p>Última conexión 28/09/2024 a las <span id="current-time-connection">--:--</span></p>
+            <div class="balance-info">
+                <div class="balance-item balance-bbva">
+                    <span class="balance-title">TIENES EN BBVA:</span>
+                    <strong id="balance-amount" class="balance-value">86.735,98 €</strong>
+                </div>
+                <div class="balance-item balance-available">
+                    <span class="balance-title">Disponible en cuentas BBVA:</span>
+                    <strong id="available-balance" class="balance-value">86.735,98 €</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="movements-section">
+            <h3>Últimos Movimientos</h3>
+            <ul id="movements-list">
+                <li class="transaction">
+                    <div class="transaction-details">
+                        <span class="transaction-date">28/09/2024</span>
+                        <span class="transaction-description">Reembolso Amazon</span>
+                    </div>
+                    <span class="transaction-amount positive">+189,78 €</span>
+                </li>
+                <li class="transaction">
+                    <div class="transaction-details">
+                        <span class="transaction-date">28/09/2024</span>
+                        <span class="transaction-description">Mabara Bar</span>
+                    </div>
+                    <span class="transaction-amount negative">-7,00 €</span>
+                </li>
+                <li class="transaction">
+                    <div class="transaction-details">
+                        <span class="transaction-date">28/09/2024</span>
+                        <span class="transaction-description">Civico Bar De Copas</span>
+                    </div>
+                    <span class="transaction-amount negative">-7,00 €</span>
+                </li>
+                <li class="transaction">
+                    <div class="transaction-details">
+                        <span class="transaction-date">27/09/2024</span>
+                        <span class="transaction-description">Civico Bar de Copas</span>
+                    </div>
+                    <span class="transaction-amount negative">-24,00 €</span>
+                </li>
+                <li class="transaction">
+                    <div class="transaction-details">
+                        <span class="transaction-date">27/09/2024</span>
+                        <span class="transaction-description">Ingreso Nómina</span>
+                    </div>
+                    <span class="transaction-amount positive">+2.578,08 €</span>
+                </li>
+                <li class="transaction">
+                    <div class="transaction-details">
+                        <span class="transaction-date">25/09/2024</span>
+                        <span class="transaction-description">Bk Guadalajara</span>
+                    </div>
+                    <span class="transaction-amount negative">-8,96 €</span>
+                </li>
+            </ul>
+        </section>
+
+        <section class="graph-section">
+            <canvas id="balance-chart"></canvas>
+        </section>
+    </div>
+<script type="text/javascript" src="js/script.js"></script>
+</body>
+</html>
