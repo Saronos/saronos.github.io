@@ -8,6 +8,7 @@
 
 body {
     display: flex;
+    flex-direction: column;
     min-height: 100vh;
     background-color: #f4f4f4;
 }
@@ -21,6 +22,12 @@ body {
     top: 0;
     left: 0;
     height: 100%;
+    transform: translateX(0);
+    transition: transform 0.3s ease-in-out;
+}
+
+.sidebar.show {
+    transform: translateX(-240px);
 }
 
 .sidebar .logo img {
@@ -40,6 +47,19 @@ body {
     font-size: 16px;
 }
 
+.menu-toggle {
+    display: none;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background-color: #004481;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    z-index: 2;
+}
+
 .main-content {
     margin-left: 240px;
     flex: 1;
@@ -47,16 +67,21 @@ body {
 }
 
 .header {
-    background-color: #004481; /* Color de fondo de la barra superior */
-    padding: 0; /* Eliminar padding para que el menú superior esté pegado al menú lateral */
+    background-color: #004481;
+    padding: 0;
     display: flex;
     align-items: center;
     height: 60px;
     width: calc(100% - 240px);
     position: fixed;
     top: 0;
-    left: 240px; /* Alinear el menú superior justo después del menú lateral */
+    left: 240px;
     z-index: 1;
+    transition: transform 0.3s ease-in-out;
+}
+
+.header.show {
+    transform: translateX(-240px);
 }
 
 .top-menu ul {
@@ -67,11 +92,12 @@ body {
     padding: 0;
     height: 100%;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .top-menu ul li a {
     text-decoration: none;
-    color: white; /* Texto en blanco para mayor contraste */
+    color: white;
     font-weight: bold;
     padding: 20px 15px;
     display: block;
@@ -79,12 +105,12 @@ body {
 }
 
 .top-menu ul li a.highlighted-access {
-    background-color: #028484; /* Fondo de "Accesos Destacados" */
-    border-radius: 0; /* No redondear las esquinas para mejor integración */
+    background-color: #028484;
+    border-radius: 0;
 }
 
 .balance-section {
-    margin-top: 80px; /* Ajustar el margen superior para no quedar debajo del menú */
+    margin-top: 80px;
     margin-bottom: 20px;
     background-color: #fff;
     padding: 20px;
@@ -94,7 +120,7 @@ body {
 
 .balance-info {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     margin: 20px 0;
     border-top: 1px solid #e0e0e0;
     padding-top: 20px;
@@ -108,6 +134,7 @@ body {
 .balance-value {
     font-size: 28px;
     color: #003a70;
+    margin-top: 10px;
 }
 
 .movements-section {
@@ -182,4 +209,29 @@ body {
 
 canvas {
     max-width: 100%;
+}
+
+@media screen and (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-240px);
+    }
+
+    .menu-toggle {
+        display: block;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 10px;
+    }
+
+    .header {
+        width: 100%;
+        left: 0;
+    }
+
+    .header.show,
+    .sidebar.show {
+        transform: translateX(0);
+    }
 }
