@@ -1,121 +1,848 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BBVA - Dashboard</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script defer src="script.js"></script>
-<link type="text/css" rel="stylesheet" href="css/style.css"/>
+    <title>Ecos de Cristal | Van Gogh Edition</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fuentes Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+    
+    <!-- Iconos Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Marked JS -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Activar modo oscuro manual
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Outfit"', 'sans-serif'],
+                        serif: ['"Cormorant Garamond"', 'serif'],
+                    },
+                    colors: {
+                        // Paleta Van Gogh personalizada
+                        vangogh: {
+                            dark: '#0b1120',      // Azul noche profunda
+                            blue: '#1e3a8a',      // Azul Starry Night
+                            teal: '#14b8a6',      // Turquesa vibrante
+                            yellow: '#facc15',    // Amarillo estrellas
+                            lilac: '#a78bfa',     // Lila suave
+                        }
+                    },
+                    boxShadow: {
+                        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                        'glow': '0 0 20px rgba(45, 212, 191, 0.3)', // Glow turquesa
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* VARIABLES CSS PARA CAMBIO DE TEMA FLUIDO */
+        :root {
+            /* MODO DÍA: PINTURA "ALMENDRO EN FLOR" / "GIRASOLES" */
+            --bg-color: #ecfeff; 
+            --text-main: #0c4a6e; 
+            --text-muted: #334155; 
+            
+            /* Glass Light */
+            --glass-bg: rgba(255, 255, 255, 0.5);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --card-bg: rgba(255, 255, 255, 0.35);
+            --card-hover: rgba(255, 255, 255, 0.75);
+            
+            --accent-primary: #0d9488; /* Teal oscuro */
+            --accent-secondary: #f59e0b; /* Amber/Oro */
+        }
+
+        .dark {
+            /* MODO NOCHE: PINTURA "LA NOCHE ESTRELLADA" */
+            --bg-color: #020617; 
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            
+            /* Glass Dark */
+            --glass-bg: rgba(15, 23, 42, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(30, 41, 59, 0.4);
+            --card-hover: rgba(51, 65, 85, 0.6);
+            
+            --accent-primary: #2dd4bf; /* Teal brillante */
+            --accent-secondary: #a78bfa; /* Lila brillante */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow-x: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        /* --- FONDO ANIMADO --- */
+        .ambient-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            background: var(--bg-color);
+            transition: background 0.5s ease;
+        }
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px); 
+            opacity: 0.6;
+            animation: float 20s infinite ease-in-out;
+            transition: background 0.5s ease, opacity 0.5s ease;
+        }
+        
+        .orb-1 { width: 55vw; height: 55vw; top: -10%; left: -10%; animation-delay: 0s; }
+        :root .orb-1 { background: #bae6fd; opacity: 0.7; } 
+        .dark .orb-1 { background: #1e3a8a; opacity: 0.4; } 
+
+        .orb-2 { width: 45vw; height: 45vw; bottom: -10%; right: -5%; animation-delay: -5s; }
+        :root .orb-2 { background: #fde047; opacity: 0.5; } 
+        .dark .orb-2 { background: #115e59; opacity: 0.4; } 
+
+        .orb-3 { width: 35vw; height: 35vw; top: 40%; left: 30%; animation-delay: -10s; }
+        :root .orb-3 { background: #5eead4; opacity: 0.5; } 
+        .dark .orb-3 { background: #581c87; opacity: 0.3; } 
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30px, 50px) scale(1.1); }
+        }
+
+        /* --- UTILIDADES GLASSMORPHISM --- */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+            transition: background 0.3s ease, border 0.3s ease;
+        }
+        
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            background: var(--card-hover);
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 20px 40px rgba(13, 148, 136, 0.1);
+            border-color: var(--accent-primary);
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            color: inherit;
+        }
+        .dark .glass-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .active-nav {
+            background: var(--card-hover);
+            color: var(--accent-primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            font-weight: 600;
+        }
+
+        .text-accent { color: var(--accent-primary); }
+        .text-muted { color: var(--text-muted); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--accent-primary); opacity: 0.5; border-radius: 10px; }
+        
+        .fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; transform: translateY(20px); }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        
+        .sparkle-spin { animation: spin 3s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .dark #modal-card, .dark #add-modal-card { background: rgba(15, 23, 42, 0.95); }
+        .dark #modal-header { background: rgba(15, 23, 42, 0.9); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .dark .modal-bg-overlay { background: rgba(0,0,0, 0.7); }
+    </style>
 </head>
-<body>
-    <button class="menu-toggle" id="menu-toggle">&#9776;</button>
-    <nav class="sidebar" id="sidebar">
-        <div class="logo">
-            <img src="https://web.bbva.es/packages/assets/img/coronita/bbva-logo.png?v=cf4b6bb0" alt="BBVA Logo">
+<body class="font-sans antialiased selection:bg-teal-300 selection:text-teal-900">
+
+    <!-- Fondo Animado -->
+    <div class="ambient-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Navegación Flotante -->
+    <nav class="fixed top-6 left-1/2 transform -translate-x-1/2 w-[95%] md:w-[90%] max-w-4xl z-50">
+        <div class="glass-panel rounded-full px-4 md:px-6 py-3 flex justify-between items-center shadow-lg">
+            <span class="font-serif text-2xl font-bold tracking-wide cursor-pointer flex items-center gap-1" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+                srodrigarci<span class="text-accent text-3xl">.</span>
+            </span>
+            
+            <div class="hidden md:flex gap-2">
+                <button onclick="filtrarObras('todos')" class="nav-btn px-4 py-1.5 rounded-full text-sm transition-all active-nav" id="btn-todos">Todo</button>
+                <button onclick="filtrarObras('Poesía')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-poesia">Poesía</button>
+                <button onclick="filtrarObras('Relato')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-relato">Relatos</button>
+                <button onclick="filtrarObras('Microcuentos')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-microcuentos">Microcuentos</button>
+            </div>
+
+            <div class="flex items-center gap-2 md:gap-3">
+                <!-- Botón de Añadir (NUEVO) -->
+                <button onclick="abrirModalNuevo()" class="w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-accent border border-transparent hover:border-accent/30" title="Añadir nueva obra">
+                    <i class="ph-bold ph-plus text-xl"></i>
+                </button>
+
+                <!-- Botón de Tema -->
+                <button onclick="toggleTheme()" id="theme-btn" class="w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-amber-500 dark:text-yellow-300">
+                    <i class="ph-fill ph-sun text-xl" id="theme-icon"></i>
+                </button>
+
+                <!-- Botón Musa -->
+                <button onclick="invocarMusa()" class="w-10 h-10 rounded-full bg-gradient-to-tr from-teal-400 to-blue-500 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-md group relative">
+                    <i class="ph-fill ph-sparkle text-lg"></i>
+                </button>
+                
+                <button onclick="openAbout()" class="w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-muted">
+                    <i class="ph ph-user text-lg"></i>
+                </button>
+            </div>
         </div>
-        <ul>
-            <li>Posición Global</li>
-            <li>Hacer una operación</li>
-            <li>Cuentas y Tarjetas</li>
-            <li>Hipotecas y Préstamos</li>
-            <li>Ahorro e Inversión</li>
-            <li>Seguros</li>
-            <li>Quiero contratar</li>
-            <li>Mi gestor</li>
-            <li>Mi buzón</li>
-            <li>Mi perfil</li>
-            <li>Tu ahorro energético</li>
-            <li>Invita a un amigo</li>
-            <li>Buscador</li>
-            <li>Atención al cliente</li>
-            <li>Oficinas y cajeros</li>
-            <li>Idioma</li>
-        </ul>
+        
+        <!-- Menú móvil -->
+        <div class="md:hidden flex justify-center gap-3 mt-4 glass-panel py-2 px-6 rounded-full mx-auto w-fit scale-90 overflow-x-auto">
+             <button onclick="filtrarObras('todos')" class="text-xs font-bold uppercase tracking-wider text-accent shrink-0">Todo</button>
+             <button onclick="filtrarObras('Poesía')" class="text-xs font-bold uppercase tracking-wider text-muted shrink-0">Poesía</button>
+             <button onclick="filtrarObras('Relato')" class="text-xs font-bold uppercase tracking-wider text-muted shrink-0">Relatos</button>
+             <button onclick="filtrarObras('Microcuentos')" class="text-xs font-bold uppercase tracking-wider text-muted shrink-0">Micros</button>
+        </div>
     </nav>
 
-    <div class="main-content">
-        <header class="header" id="header">
-            <nav class="top-menu">
-                <ul>
-                    <li><a href="#" class="highlighted-access">Accesos Destacados</a></li>
-                    <li><a href="#">Información Fiscal</a></li>
-                    <li><a href="#">Operativas de Emergencia</a></li>
-                    <li><a href="#">Tramitación de Herencias</a></li>
-                    <li><a href="#">Accesibilidad</a></li>
-                </ul>
-            </nav>
-        </header>
+    <!-- Contenido Principal -->
+    <main class="container mx-auto px-6 pt-40 pb-20 max-w-6xl min-h-screen">
+        
+        <!-- Header Hero -->
+        <div class="text-center mb-20 fade-in-up">
+            <h1 class="font-serif text-5xl md:text-7xl lg:text-8xl mb-6 tracking-tight leading-none text-main">
+                Palabras en <br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-blue-600 to-indigo-600 dark:from-teal-300 dark:via-blue-300 dark:to-purple-400 animate-pulse">Suspensión</span>
+            </h1>
+            <p class="text-lg text-muted font-light max-w-xl mx-auto">
+                Un archivo vivo de turquesas y violetas. Donde la poesía respira y las historias encuentran su reflejo.
+            </p>
+        </div>
 
-        <section class="balance-section">
-            <h2>Buenas tardes, SERGIO</h2>
-            <p>Última conexión 28/09/2024 a las <span id="current-time-connection">--:--</span></p>
-            <div class="balance-info">
-                <div class="balance-item balance-bbva">
-                    <span class="balance-title">TIENES EN BBVA:</span>
-                    <strong id="balance-amount" class="balance-value">86.735,98 €</strong>
+        <!-- Musa Container -->
+        <div id="musa-container" class="hidden mb-16 mx-auto max-w-2xl fade-in-up">
+            <div class="glass-panel p-8 rounded-2xl relative border border-teal-500/20 shadow-glow">
+                <button onclick="cerrarMusa()" class="absolute top-4 right-4 text-muted hover:text-accent transition-colors"><i class="ph ph-x"></i></button>
+                <div class="flex items-center gap-3 mb-4 text-accent">
+                    <i class="ph-fill ph-magic-wand text-xl"></i>
+                    <span class="text-xs font-bold uppercase tracking-widest">La Musa Dice</span>
                 </div>
-                <div class="balance-item balance-available">
-                    <span class="balance-title">Disponible en cuentas BBVA:</span>
-                    <strong id="available-balance" class="balance-value">86.735,98 €</strong>
+                <div id="musa-content" class="text-xl md:text-2xl font-serif leading-relaxed italic text-center px-4 text-main">
+                    Conectando con el éter...
+                </div>
+                <div class="text-center mt-6">
+                    <button id="btn-regenerar-musa" onclick="invocarMusa()" class="hidden text-xs text-muted hover:text-accent font-bold uppercase tracking-widest transition-colors">
+                        Pedir otra idea
+                    </button>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section class="movements-section">
-            <h3>Últimos Movimientos</h3>
-            <ul id="movements-list">
-                <li class="transaction">
-                    <div class="transaction-details">
-                        <span class="transaction-date">28/09/2024</span>
-                        <span class="transaction-description">Reembolso Amazon</span>
-                    </div>
-                    <span class="transaction-amount positive">+189,78 €</span>
-                </li>
-                <li class="transaction">
-                    <div class="transaction-details">
-                        <span class="transaction-date">28/09/2024</span>
-                        <span class="transaction-description">Mabara Bar</span>
-                    </div>
-                    <span class="transaction-amount negative">-7,00 €</span>
-                </li>
-                <li class="transaction">
-                    <div class="transaction-details">
-                        <span class="transaction-date">28/09/2024</span>
-                        <span class="transaction-description">Civico Bar De Copas</span>
-                    </div>
-                    <span class="transaction-amount negative">-7,00 €</span>
-                </li>
-                <li class="transaction">
-                    <div class="transaction-details">
-                        <span class="transaction-date">27/09/2024</span>
-                        <span class="transaction-description">Civico Bar de Copas</span>
-                    </div>
-                    <span class="transaction-amount negative">-24,00 €</span>
-                </li>
-                <li class="transaction">
-                    <div class="transaction-details">
-                        <span class="transaction-date">27/09/2024</span>
-                        <span class="transaction-description">Ingreso Nómina</span>
-                    </div>
-                    <span class="transaction-amount positive">+2.578,08 €</span>
-                </li>
-                <li class="transaction">
-                    <div class="transaction-details">
-                        <span class="transaction-date">25/09/2024</span>
-                        <span class="transaction-description">Bk Guadalajara</span>
-                    </div>
-                    <span class="transaction-amount negative">-8,96 €</span>
-                </li>
-            </ul>
-        </section>
+        <!-- Grid de Tarjetas -->
+        <div id="galeria-obras" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- JS inyectará contenido aquí -->
+        </div>
 
-        <section class="graph-section">
-            <canvas id="balance-chart"></canvas>
-        </section>
+        <!-- Estado vacío -->
+        <div id="no-results" class="hidden text-center py-32">
+            <div class="text-6xl mb-4 opacity-20 grayscale">🌫️</div>
+            <p class="text-muted font-serif text-xl italic">El vacío también es parte de la obra.</p>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-12 relative z-10">
+        <div class="glass-panel inline-flex gap-8 px-8 py-4 rounded-full">
+            <a href="#" class="text-muted hover:text-accent transition-colors text-xl"><i class="ph ph-instagram-logo"></i></a>
+            <a href="#" class="text-muted hover:text-accent transition-colors text-xl"><i class="ph ph-twitter-logo"></i></a>
+            <a href="#" class="text-muted hover:text-accent transition-colors text-xl"><i class="ph ph-envelope-simple"></i></a>
+        </div>
+        <p class="mt-6 text-xs text-muted uppercase tracking-widest">© 2025 • Van Gogh Edition</p>
+    </footer>
+
+    <!-- MODAL DE AÑADIR NUEVA OBRA (NUEVO) -->
+    <div id="add-modal" class="fixed inset-0 z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="cerrarModalNuevo()"></div>
+        
+        <div id="add-modal-card" class="glass-panel w-full max-w-lg rounded-2xl relative transform scale-95 transition-transform bg-white/95 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex justify-between items-center">
+                <h3 class="font-serif text-xl font-bold text-main">Nueva Creación</h3>
+                <button onclick="cerrarModalNuevo()" class="text-muted hover:text-red-500"><i class="ph-bold ph-x"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto space-y-4">
+                <!-- Título -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Título</label>
+                    <input type="text" id="new-title" class="glass-input w-full rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="Ej: Atardecer en Arles">
+                </div>
+
+                <!-- Categoría -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Categoría</label>
+                    <!-- Wrapper relativo para posicionar el icono dentro -->
+                    <div class="relative">
+                        <select id="new-category" class="glass-input w-full rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none pr-10 cursor-pointer">
+                            <option value="Poesía">Poesía</option>
+                            <option value="Relato">Relato</option>
+                            <option value="Microcuentos">Microcuentos</option>
+                        </select>
+                        <!-- Icono absoluto y centrado verticalmente dentro del wrapper -->
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-muted">
+                            <i class="ph-fill ph-caret-down"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Imagen (Subida) -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Imagen / Manuscrito (Opcional)</label>
+                    <div class="relative group cursor-pointer">
+                        <input type="file" id="new-image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="previewImage(this)">
+                        <div class="glass-input rounded-lg px-4 py-6 text-center border-dashed border-2 border-gray-300 dark:border-gray-600 group-hover:border-teal-400 transition-colors" id="image-drop-area">
+                            <i class="ph-fill ph-camera text-2xl text-muted mb-2"></i>
+                            <p class="text-sm text-muted" id="image-label">Haz clic para subir una foto</p>
+                        </div>
+                        <img id="image-preview" class="hidden w-full h-48 object-cover rounded-lg mt-2 shadow-md">
+                        <button id="remove-image" onclick="removeImage(event)" class="hidden absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 z-20 shadow"><i class="ph-bold ph-x"></i></button>
+                    </div>
+                </div>
+
+                <!-- Contenido -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Contenido / Transcripción</label>
+                    <textarea id="new-content" rows="6" class="glass-input w-full rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="Escribe aquí tu texto..."></textarea>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex justify-end gap-3">
+                <button onclick="cerrarModalNuevo()" class="px-4 py-2 rounded-lg text-sm font-bold text-muted hover:bg-gray-200/50 transition-colors">Cancelar</button>
+                <button onclick="guardarNuevaObra()" class="px-6 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-teal-500 to-blue-500 hover:shadow-lg hover:scale-105 transition-all">Guardar</button>
+            </div>
+        </div>
     </div>
-<script type="text/javascript" src="js/script.js"></script>
+
+    <!-- VISOR DE LECTURA -->
+    <div id="reader-modal" class="fixed inset-0 z-[60] hidden opacity-0 transition-opacity duration-500" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-xl modal-bg-overlay" onclick="closeReader()"></div>
+        
+        <div class="absolute inset-0 overflow-y-auto">
+            <div class="min-h-full flex items-center justify-center p-4 md:p-8">
+                
+                <div id="modal-card" class="w-full max-w-3xl glass-panel rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-500 relative bg-white/90">
+                    
+                    <!-- Header Modal -->
+                    <div id="modal-header" class="px-8 py-6 border-b border-gray-100/50 flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur z-20 transition-colors">
+                        <span id="modal-category" class="text-xs font-bold text-teal-600 dark:text-teal-300 uppercase tracking-widest bg-teal-50 dark:bg-teal-900/30 px-3 py-1 rounded-full border border-teal-100 dark:border-teal-800">Categoría</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="leerObraEnVozAlta()" id="btn-tts" class="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:bg-teal-50 dark:hover:bg-white/10 hover:text-teal-600 transition-colors" title="Escuchar">
+                                <i class="ph-fill ph-speaker-high"></i>
+                            </button>
+                            <button onclick="analizarObraActual()" id="btn-analyze" class="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:bg-purple-50 dark:hover:bg-white/10 hover:text-purple-500 transition-colors" title="Analizar con IA">
+                                <i class="ph-fill ph-sparkle"></i>
+                            </button>
+                            <div class="w-px h-6 bg-gray-200 dark:bg-white/20 mx-2"></div>
+                            <button onclick="closeReader()" class="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:bg-red-50 dark:hover:bg-white/10 hover:text-red-500 transition-colors">
+                                <i class="ph-bold ph-x"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cuerpo Modal -->
+                    <div class="px-8 md:px-16 py-12">
+                        
+                        <!-- Area de Output IA -->
+                        <div id="ai-analysis-container" class="hidden mb-10 fade-in-up">
+                            <div class="bg-gradient-to-br from-purple-50 to-white dark:from-indigo-900/30 dark:to-slate-900 p-6 rounded-2xl border border-purple-100 dark:border-white/10 shadow-sm relative overflow-hidden">
+                                <div class="absolute top-0 right-0 w-16 h-16 bg-purple-200 dark:bg-purple-900 rounded-full blur-xl opacity-20 -mr-8 -mt-8"></div>
+                                <h4 class="text-xs font-bold text-purple-600 dark:text-purple-300 uppercase mb-2 flex items-center gap-2">
+                                    <i class="ph-fill ph-magic-wand"></i> Análisis Profundo
+                                </h4>
+                                <div id="ai-analysis-text" class="text-sm text-gray-600 dark:text-gray-300 italic leading-relaxed"></div>
+                            </div>
+                        </div>
+
+                        <h2 id="modal-title" class="font-serif text-4xl md:text-5xl mb-4 text-center leading-tight text-accent">Título</h2>
+                        <div class="flex justify-center mb-12">
+                            <span id="modal-date" class="text-xs text-muted font-medium bg-white/50 dark:bg-white/5 px-3 py-1 rounded-full border border-gray-100 dark:border-white/10">Fecha</span>
+                        </div>
+
+                        <!-- Contenedor Imagen Obra (NUEVO) -->
+                        <div id="modal-image-container" class="hidden mb-10 flex justify-center">
+                             <img id="modal-image" class="rounded-lg shadow-lg max-h-[500px] object-contain border-4 border-white dark:border-white/10 bg-white transform rotate-1 hover:rotate-0 transition-transform duration-500">
+                        </div>
+
+                        <div id="modal-body" class="font-serif text-xl md:text-2xl leading-loose text-main">
+                            <!-- Contenido -->
+                        </div>
+
+                        <div class="mt-20 flex justify-center opacity-30 text-accent">
+                            <i class="ph-fill ph-asterisk text-2xl"></i>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SOBRE MI -->
+    <div id="about-modal" class="fixed inset-0 z-[60] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/20 dark:bg-black/60 backdrop-blur-sm" onclick="closeAbout()"></div>
+        <div class="glass-panel w-full max-w-md p-8 rounded-3xl relative transform scale-95 transition-transform bg-white/90 dark:bg-slate-900/90">
+            <button onclick="closeAbout()" class="absolute top-4 right-4 text-muted hover:text-accent"><i class="ph ph-x text-xl"></i></button>
+            <div class="text-center">
+                <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-teal-200 to-blue-300 mx-auto mb-6 p-1 shadow-glass">
+                    <img src="/api/placeholder/150/150" class="w-full h-full rounded-full object-cover border-2 border-white dark:border-slate-700">
+                </div>
+                <h3 class="font-serif text-2xl font-bold mb-2">El Autor</h3>
+                <p class="text-muted text-sm leading-relaxed mb-6">
+                    Escribiendo código y poesía desde algún lugar entre la pantalla y el papel.
+                </p>
+                <button onclick="closeAbout()" class="text-xs font-bold text-accent uppercase tracking-widest hover:underline">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        const apiKey = ""; 
+
+        // --- GESTIÓN DE TEMA ---
+        function initTheme() {
+            // Verificar preferencia guardada o sistema
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                updateThemeIcon(true);
+            } else {
+                document.documentElement.classList.remove('dark');
+                updateThemeIcon(false);
+            }
+
+            // AÑADIDO: Listener para cambios en tiempo real del sistema
+            // Si el usuario no ha fijado un modo (no hay 'theme' en localStorage),
+            // la web responderá a cambios del sistema (ej: atardecer, cambio automático de iOS/Android)
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (!('theme' in localStorage)) {
+                    if (event.matches) {
+                        document.documentElement.classList.add('dark');
+                        updateThemeIcon(true);
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        updateThemeIcon(false);
+                    }
+                }
+            });
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+            updateThemeIcon(isDark);
+        }
+
+        function updateThemeIcon(isDark) {
+            const icon = document.getElementById('theme-icon');
+            if (isDark) {
+                icon.classList.remove('ph-sun');
+                icon.classList.add('ph-moon-stars');
+            } else {
+                icon.classList.remove('ph-moon-stars');
+                icon.classList.add('ph-sun');
+            }
+        }
+
+        // --- DATOS INICIALES (POR DEFECTO) ---
+        const defaultObras = [
+            {
+                id: 1,
+                titulo: "Café de Medianoche",
+                categoria: "Relato",
+                fecha: "23 Nov 2025",
+                resumen: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...",
+                contenido: `<p>El sonido de la cafetera era lo único que rompía el silencio de la cocina a las tres de la mañana. No es que tuviera insomnio, es que la ciudad se siente diferente cuando nadie la mira.</p><p>Miré por la ventana. Las luces de la calle parpadeaban como si también estuvieran cansadas de estar despiertas. En ese momento, comprendí que escribir no es más que intentar traducir ese parpadeo, ese instante fugaz antes de que todo se apague.</p>`
+            },
+            {
+                id: 2,
+                titulo: "Estatua de Sal",
+                categoria: "Poesía",
+                fecha: "20 Nov 2025",
+                resumen: "Mirar atrás / no fue el error...",
+                contenido: `Mirar atrás\nno fue el error.\nEl error fue creer\nque lo que dejábamos\nseguía existiendo.\n\nNos volvimos piedra\nno por castigo divino,\nsino por el peso insoportable\nde la memoria estática.`
+            },
+            {
+                id: 3,
+                titulo: "El Último Tren",
+                categoria: "Microcuentos",
+                fecha: "15 Nov 2025",
+                resumen: "Corrió como nunca, pero al llegar al andén, el tren no se había ido...",
+                contenido: `<p>Corrió como nunca, sintiendo cómo el aire frío le quemaba los pulmones. Al llegar al andén, el tren no se había ido. Estaba ahí, inmóvil, con las puertas abiertas.</p><p>Pero estaba vacío. No había conductor, ni pasajeros. Solo una luz tenue y un silencio sepulcral.</p>`
+            },
+            {
+                id: 4,
+                titulo: "Tinta Invisible",
+                categoria: "Poesía",
+                fecha: "10 Oct 2025",
+                resumen: "Escribo para no olvidar / que una vez fuimos...",
+                contenido: `Escribo para no olvidar\nque una vez fuimos\nfuego y madera.\n\nAhora solo queda ceniza,\ny estas palabras\nque manchan mis dedos\npero no limpian mi alma.`
+            }
+        ];
+
+        // Cargar obras desde LocalStorage o usar defaults
+        let obras = JSON.parse(localStorage.getItem('obras_vangogh')) || defaultObras;
+        
+        let currentWorkId = null;
+        let currentAudio = null;
+
+        // --- LÓGICA AÑADIR NUEVA OBRA ---
+        const addModal = document.getElementById('add-modal');
+        const addModalCard = document.getElementById('add-modal-card');
+        let currentImageBase64 = null;
+
+        function abrirModalNuevo() {
+            addModal.classList.remove('hidden');
+            setTimeout(() => {
+                addModal.classList.remove('opacity-0');
+                addModalCard.classList.remove('scale-95');
+                addModalCard.classList.add('scale-100');
+            }, 10);
+        }
+
+        function cerrarModalNuevo() {
+            addModal.classList.add('opacity-0');
+            addModalCard.classList.remove('scale-100');
+            addModalCard.classList.add('scale-95');
+            setTimeout(() => {
+                addModal.classList.add('hidden');
+                limpiarFormulario();
+            }, 300);
+        }
+
+        function limpiarFormulario() {
+            document.getElementById('new-title').value = '';
+            document.getElementById('new-content').value = '';
+            document.getElementById('new-image').value = '';
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('image-drop-area').classList.remove('hidden');
+            document.getElementById('remove-image').classList.add('hidden');
+            currentImageBase64 = null;
+        }
+
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentImageBase64 = e.target.result;
+                    const preview = document.getElementById('image-preview');
+                    preview.src = currentImageBase64;
+                    preview.classList.remove('hidden');
+                    document.getElementById('image-drop-area').classList.add('hidden');
+                    document.getElementById('remove-image').classList.remove('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function removeImage(e) {
+            e.stopPropagation();
+            document.getElementById('new-image').value = '';
+            currentImageBase64 = null;
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('image-drop-area').classList.remove('hidden');
+            document.getElementById('remove-image').classList.add('hidden');
+        }
+
+        function guardarNuevaObra() {
+            const titulo = document.getElementById('new-title').value;
+            const categoria = document.getElementById('new-category').value;
+            const contenido = document.getElementById('new-content').value;
+
+            if (!titulo || !contenido) {
+                alert("Por favor, el título y el contenido son obligatorios.");
+                return;
+            }
+
+            const now = new Date();
+            const fechaFormato = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+
+            const nuevaObra = {
+                id: Date.now(), // ID único basado en timestamp
+                titulo: titulo,
+                categoria: categoria,
+                fecha: fechaFormato,
+                resumen: contenido.substring(0, 100) + (contenido.length > 100 ? "..." : ""),
+                contenido: contenido, // Se guarda el texto puro
+                imagen: currentImageBase64 // Se guarda la imagen en base64
+            };
+
+            // Añadir al principio del array
+            obras.unshift(nuevaObra);
+
+            // Guardar en LocalStorage
+            localStorage.setItem('obras_vangogh', JSON.stringify(obras));
+
+            // Actualizar vista
+            renderizarObras('todos');
+            cerrarModalNuevo();
+        }
+
+        // --- LÓGICA IA ---
+        async function callGeminiAPI(payload, isTTS = false) {
+            const model = isTTS ? 'gemini-2.5-flash-preview-tts' : 'gemini-2.5-flash-preview-09-2025';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const delays = [1000, 2000, 4000];
+            
+            for (let i = 0; i <= delays.length; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    if (i === delays.length) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        }
+
+        async function invocarMusa() {
+            const container = document.getElementById('musa-container');
+            const content = document.getElementById('musa-content');
+            const btnRegenerar = document.getElementById('btn-regenerar-musa');
+            
+            container.classList.remove('hidden');
+            btnRegenerar.classList.add('hidden');
+            content.innerHTML = '<div class="flex justify-center"><i class="ph-fill ph-sparkle text-3xl text-teal-400 sparkle-spin"></i></div>';
+            const prompt = "Actúa como una musa surrealista e inspirada en Van Gogh. Genera un 'prompt' de escritura en español breve y muy visual (máximo 25 palabras).";
+            try {
+                const data = await callGeminiAPI({ contents: [{ parts: [{ text: prompt }] }] });
+                const text = data.candidates[0].content.parts[0].text;
+                content.innerHTML = marked.parse(text);
+                btnRegenerar.classList.remove('hidden');
+            } catch (error) {
+                content.innerHTML = "El pincel se ha secado...";
+                btnRegenerar.classList.remove('hidden');
+            }
+        }
+
+        function cerrarMusa() { document.getElementById('musa-container').classList.add('hidden'); }
+
+        async function analizarObraActual() {
+            const obra = obras.find(o => o.id === currentWorkId);
+            if (!obra) return;
+            const container = document.getElementById('ai-analysis-container');
+            const contentDiv = document.getElementById('ai-analysis-text');
+            const btn = document.getElementById('btn-analyze');
+            container.classList.remove('hidden');
+            contentDiv.innerHTML = '<span class="flex items-center gap-2"><i class="ph-fill ph-spinner animate-spin"></i> Analizando...</span>';
+            btn.classList.add('animate-pulse');
+            
+            // Usar texto plano para análisis
+            const prompt = `Analiza este texto creativo: "${obra.contenido}". Describe en 2 frases qué colores evocaría si fuera una pintura impresionista y qué emoción predomina.`;
+            
+            try {
+                const data = await callGeminiAPI({ contents: [{ parts: [{ text: prompt }] }] });
+                const text = data.candidates[0].content.parts[0].text;
+                contentDiv.innerHTML = marked.parse(text);
+            } catch (error) {
+                contentDiv.innerHTML = "No pude visualizar la obra ahora.";
+            } finally {
+                btn.classList.remove('animate-pulse');
+            }
+        }
+
+        async function leerObraEnVozAlta() {
+            const obra = obras.find(o => o.id === currentWorkId);
+            if (!obra) return;
+            const btn = document.getElementById('btn-tts');
+            if (currentAudio && !currentAudio.paused) {
+                currentAudio.pause(); currentAudio = null;
+                btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>'; btn.classList.remove('text-red-500', 'bg-red-50');
+                return;
+            }
+            btn.innerHTML = '<i class="ph-fill ph-spinner animate-spin"></i>';
+            try {
+                const data = await callGeminiAPI({
+                    contents: [{ parts: [{ text: obra.contenido }] }],
+                    generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } } }
+                }, true);
+                const base64Audio = data.candidates[0].content.parts[0].inlineData.data;
+                const binaryString = window.atob(base64Audio);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                const wavBytes = pcmToWav(bytes, 24000);
+                const blob = new Blob([wavBytes], { type: 'audio/wav' });
+                currentAudio = new Audio(URL.createObjectURL(blob));
+                currentAudio.play();
+                btn.innerHTML = '<i class="ph-fill ph-stop"></i>'; btn.classList.add('text-red-500', 'bg-red-50');
+                currentAudio.onended = () => { btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>'; btn.classList.remove('text-red-500', 'bg-red-50'); currentAudio = null; };
+            } catch (error) { console.error(error); btn.innerHTML = '<i class="ph-bold ph-warning"></i>'; setTimeout(() => btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>', 2000); }
+        }
+
+        function pcmToWav(pcmData, sampleRate = 24000) {
+            const buffer = new ArrayBuffer(44 + pcmData.length);
+            const view = new DataView(buffer);
+            const writeString = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+            writeString(0, 'RIFF'); view.setUint32(4, 36 + pcmData.length, true); writeString(8, 'WAVE');
+            writeString(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+            writeString(36, 'data'); view.setUint32(40, pcmData.length, true);
+            new Uint8Array(buffer).set(new Uint8Array(pcmData), 44);
+            return buffer;
+        }
+
+        // --- UI RENDER LOGIC ---
+        const galeria = document.getElementById('galeria-obras');
+        const modal = document.getElementById('reader-modal');
+        const modalBody = document.getElementById('modal-card');
+        const aboutModal = document.getElementById('about-modal');
+
+        function renderizarObras(filtro = 'todos') {
+            galeria.innerHTML = '';
+            document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('active-nav'); btn.classList.add('text-muted'); });
+            
+            let activeBtnId = 'btn-todos';
+            if (filtro === 'Poesía') activeBtnId = 'btn-poesia';
+            if (filtro === 'Relato') activeBtnId = 'btn-relato';
+            if (filtro === 'Microcuentos') activeBtnId = 'btn-microcuentos';
+            
+            const activeBtn = document.getElementById(activeBtnId);
+            if(activeBtn) { activeBtn.classList.add('active-nav'); activeBtn.classList.remove('text-muted'); }
+
+            let filtered = obras;
+            if (filtro !== 'todos') {
+                // Filtrado estricto por categoría
+                filtered = obras.filter(o => o.categoria === filtro);
+            }
+
+            if (filtered.length === 0) {
+                document.getElementById('no-results').classList.remove('hidden');
+            } else {
+                document.getElementById('no-results').classList.add('hidden');
+                filtered.forEach((obra, i) => {
+                    const el = document.createElement('div');
+                    el.className = 'glass-card p-8 rounded-2xl cursor-pointer flex flex-col h-full group fade-in-up';
+                    el.style.animationDelay = `${i * 100}ms`;
+                    el.onclick = () => abrirLectura(obra.id);
+                    // Badge si tiene imagen
+                    const imgBadge = obra.imagen ? '<span class="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full"><i class="ph-bold ph-image"></i></span>' : '';
+                    
+                    el.innerHTML = `
+                        <div class="mb-4 flex justify-between items-start">
+                            <span class="text-xs font-bold uppercase tracking-wider text-accent bg-teal-50 dark:bg-teal-900/30 px-2 py-1 rounded border border-teal-100 dark:border-teal-800">${obra.categoria}</span>
+                            <span class="text-xs text-muted font-mono">${obra.fecha}</span>
+                        </div>
+                        <h3 class="font-serif text-3xl font-medium mb-3 group-hover:text-accent transition-colors leading-tight text-main flex items-center">${obra.titulo} ${imgBadge}</h3>
+                        <p class="text-muted font-sans text-sm leading-relaxed mb-6 line-clamp-3">${obra.resumen}</p>
+                        <div class="mt-auto pt-4 border-t border-gray-200/20 dark:border-white/10 flex justify-end">
+                            <span class="text-sm font-medium text-muted group-hover:text-accent transition-colors flex items-center gap-1">
+                                Leer <i class="ph-bold ph-arrow-right"></i>
+                            </span>
+                        </div>
+                    `;
+                    galeria.appendChild(el);
+                });
+            }
+        }
+
+        function abrirLectura(id) {
+            const obra = obras.find(o => o.id === id);
+            if (!obra) return;
+            currentWorkId = id;
+
+            document.getElementById('ai-analysis-container').classList.add('hidden');
+            document.getElementById('ai-analysis-text').innerHTML = '';
+            document.getElementById('modal-category').innerText = obra.categoria;
+            document.getElementById('modal-title').innerText = obra.titulo;
+            document.getElementById('modal-date').innerText = obra.fecha;
+            
+            // Imagen Handling
+            const imgContainer = document.getElementById('modal-image-container');
+            const imgEl = document.getElementById('modal-image');
+            if (obra.imagen) {
+                imgEl.src = obra.imagen;
+                imgContainer.classList.remove('hidden');
+            } else {
+                imgContainer.classList.add('hidden');
+            }
+
+            const bodyContainer = document.getElementById('modal-body');
+            // Formatear saltos de línea para que se vean bien
+            const formattedContent = obra.contenido.replace(/\n/g, '<br>');
+            bodyContainer.innerHTML = formattedContent;
+            
+            bodyContainer.className = obra.categoria === 'Poesía' 
+                ? 'font-serif text-xl md:text-2xl text-center poetry-content text-main'
+                : 'font-serif text-xl md:text-xl text-justify max-w-2xl mx-auto text-main';
+
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => { modal.classList.remove('opacity-0'); modalBody.classList.remove('scale-95'); modalBody.classList.add('scale-100'); }, 10);
+        }
+
+        function closeReader() {
+            if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+            modal.classList.add('opacity-0'); modalBody.classList.remove('scale-100'); modalBody.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); document.body.style.overflow = ''; }, 500);
+        }
+
+        function openAbout() { aboutModal.classList.remove('hidden'); setTimeout(() => { aboutModal.classList.remove('opacity-0'); aboutModal.children[1].classList.remove('scale-95'); aboutModal.children[1].classList.add('scale-100'); }, 10); }
+        function closeAbout() { aboutModal.classList.add('opacity-0'); aboutModal.children[1].classList.remove('scale-100'); aboutModal.children[1].classList.add('scale-95'); setTimeout(() => aboutModal.classList.add('hidden'), 300); }
+
+        window.filtrarObras = renderizarObras;
+        window.invocarMusa = invocarMusa;
+        window.cerrarMusa = cerrarMusa;
+        window.abrirLectura = abrirLectura;
+        window.closeReader = closeReader;
+        window.openAbout = openAbout;
+        window.closeAbout = closeAbout;
+        window.analizarObraActual = analizarObraActual;
+        window.leerObraEnVozAlta = leerObraEnVozAlta;
+        window.toggleTheme = toggleTheme;
+        window.abrirModalNuevo = abrirModalNuevo;
+        window.cerrarModalNuevo = cerrarModalNuevo;
+        window.guardarNuevaObra = guardarNuevaObra;
+        window.previewImage = previewImage;
+        window.removeImage = removeImage;
+
+        document.addEventListener('keydown', (e) => { if(e.key === "Escape") { closeReader(); closeAbout(); cerrarModalNuevo(); } });
+
+        initTheme();
+        renderizarObras();
+    </script>
 </body>
 </html>
