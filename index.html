@@ -27,7 +27,7 @@
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // -------------------------------------------------------------------------
-        // CONFIGURACIÓN DE FIREBASE (Datos proporcionados)
+        // CONFIGURACIÓN DE FIREBASE
         // -------------------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyDtMIZq6XxcdcRmui6BjHvgb25w2EW5fTw",
@@ -64,14 +64,11 @@
                 // Intentar autenticación anónima
                 signInAnonymously(auth).catch((error) => {
                     console.error("Error Auth:", error);
-                    // Manejo específico del error que estás recibiendo
-                    if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed' || error.code === 'auth/admin-restricted-operation') {
-                        console.warn("⚠️ IMPORTANTE: La autenticación anónima no está habilitada en Firebase Console.");
-                        alert("⚠️ AVISO PARA EL AUTOR:\n\nTu base de datos está conectada, pero la 'Autenticación Anónima' está desactivada en Firebase.\n\nPara arreglarlo:\n1. Ve a console.firebase.google.com\n2. Entra en tu proyecto > Autenticación (Authentication)\n3. Pestaña 'Sign-in method'\n4. Activa 'Anónimo'\n\nMientras tanto, la web funcionará en MODO LOCAL (solo tú verás los cambios).");
+                    if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed') {
+                        console.warn("⚠️ IMPORTANTE: Activa 'Anonymous Auth' en Firebase Console -> Authentication.");
                     }
-                    // Fallback a local si falla auth
-                    useLocalMode = true;
-                    subscribeToObrasLocal();
+                    // Fallback a local
+                    activarModoLocal();
                 });
 
                 onAuthStateChanged(auth, (user) => {
@@ -85,8 +82,13 @@
             }
         } catch (e) {
             console.log("⚠️ Modo Nube no disponible. Activando Modo Local.", e);
+            activarModoLocal();
+        }
+
+        function activarModoLocal() {
             useLocalMode = true;
             subscribeToObrasLocal();
+            actualizarIndicadorEstado(false);
         }
 
         // --- SUSCRIPCIONES ---
@@ -96,11 +98,26 @@
                 const tempObras = [];
                 snapshot.forEach(doc => tempObras.push({ id: doc.id, ...doc.data() }));
                 actualizarInterfaz(tempObras);
+                actualizarIndicadorEstado(true); // Conectado
             }, (error) => {
-                console.error("Error leyendo colección (Posible falta de permisos o reglas):", error);
-                // Si falla la lectura (ej. reglas de seguridad), pasamos a local
-                useLocalMode = true;
-                subscribeToObrasLocal();
+                // Manejo específico del error de permisos
+                if (error.code === 'permission-denied') {
+                    console.warn("%c⚠️ ERROR DE PERMISOS FIREBASE", "color: red; font-size: 14px; font-weight: bold;");
+                    console.warn("Tus reglas de seguridad bloquean la lectura. Ve a Firebase Console -> Firestore -> Reglas y pega esto:");
+                    console.log(`
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /obras_literarias/{document} {
+      allow read: if true;
+      allow write: if true; 
+    }
+  }
+}
+                    `);
+                }
+                console.error("Error conectando a colección, pasando a local", error);
+                activarModoLocal();
             });
         }
 
@@ -120,6 +137,16 @@
             window.obrasGlobales = listaObras; 
             if (window.renderizarObras) window.renderizarObras(window.currentFilter || 'todos');
         }
+        
+        function actualizarIndicadorEstado(online) {
+            const el = document.getElementById('connection-status');
+            if(el) {
+                el.innerHTML = online 
+                    ? '<span class="w-2 h-2 rounded-full bg-green-500 inline-block mr-1"></span> Nube' 
+                    : '<span class="w-2 h-2 rounded-full bg-orange-400 inline-block mr-1"></span> Local';
+                el.title = online ? "Conectado a Firebase" : "Modo sin conexión (Solo tú ves los cambios)";
+            }
+        }
 
         // --- FUNCIÓN PÚBLICA DE GUARDADO ---
         window.guardarObraNueva = async (titulo, categoria, contenido, imagenBase64, fechaTexto) => {
@@ -138,14 +165,13 @@
                 nuevaObra.id = Date.now();
                 actuales.unshift(nuevaObra);
                 localStorage.setItem('obras_vangogh_v2', JSON.stringify(actuales));
-                alert("✨ Guardado en Local (Modo sin conexión).");
+                alert("✨ Guardado en Local (Sin conexión a Nube).");
                 subscribeToObrasLocal(); 
                 return true;
             } else {
                 if (!currentUser) {
-                    alert("No hay conexión con la base de datos (Usuario no autenticado). Se guardará en local.");
-                    useLocalMode = true;
-                    return window.guardarObraNueva(titulo, categoria, contenido, imagenBase64, fechaTexto);
+                    alert("Esperando conexión...");
+                    return false;
                 }
                 try {
                     const colRef = collection(db, COLLECTION_NAME);
@@ -153,9 +179,10 @@
                     return true;
                 } catch (e) {
                     console.error("Error Firebase:", e);
-                    alert("Error subiendo a la nube. Guardando en local como respaldo.");
-                    useLocalMode = true;
-                    // Reintentamos en local
+                    if (e.code === 'permission-denied') alert("Error de permisos: Revisa las Reglas en Firebase Console.");
+                    else alert("Error subiendo a la nube. Guardando en local.");
+                    
+                    activarModoLocal();
                     return window.guardarObraNueva(titulo, categoria, contenido, imagenBase64, fechaTexto);
                 }
             }
@@ -170,7 +197,7 @@
 
             if (useLocalMode) {
                 let actuales = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
-                const filtrados = actuales.filter(o => o.id !== id);
+                const filtrados = actuales.filter(o => String(o.id) !== String(id));
                 localStorage.setItem('obras_vangogh_v2', JSON.stringify(filtrados));
                 alert("🗑️ Obra eliminada del almacenamiento local.");
                 subscribeToObrasLocal();
@@ -190,7 +217,13 @@
         };
 
         // Init
-        if (window.renderizarObras) subscribeToObrasLocal();
+        if (window.renderizarObras) {
+            // Intentar renderizar local mientras conecta
+            const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
+            if(localData.length > 0) window.obrasGlobales = localData;
+            else window.obrasGlobales = obrasPorDefecto;
+            window.renderizarObras();
+        }
     </script>
 
     <script>
@@ -273,7 +306,7 @@
             </div>
 
             <div class="flex items-center gap-2 md:gap-3">
-                <!-- Botón AÑADIR (Protegido y Oculto por defecto) -->
+                <!-- Botón AÑADIR -->
                 <button onclick="abrirModalNuevo()" id="btn-add-work" class="hidden w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-accent border border-transparent hover:border-accent/30 bg-teal-50 dark:bg-white/5" title="Añadir nueva obra">
                     <i class="ph-bold ph-plus text-xl"></i>
                 </button>
@@ -332,10 +365,13 @@
     </main>
 
     <footer class="text-center py-12 relative z-10">
-        <div class="glass-panel inline-flex gap-8 px-8 py-4 rounded-full">
-            <a href="#" class="text-muted hover:text-accent transition-colors text-xl"><i class="ph ph-instagram-logo"></i></a>
-            <a href="#" class="text-muted hover:text-accent transition-colors text-xl"><i class="ph ph-twitter-logo"></i></a>
-            <a href="#" class="text-muted hover:text-accent transition-colors text-xl"><i class="ph ph-envelope-simple"></i></a>
+        <div class="glass-panel inline-flex gap-8 px-8 py-4 rounded-full flex-col md:flex-row items-center">
+            <div class="flex gap-6 text-xl text-muted">
+                <a href="#" class="hover:text-accent transition-colors"><i class="ph ph-instagram-logo"></i></a>
+                <a href="#" class="hover:text-accent transition-colors"><i class="ph ph-twitter-logo"></i></a>
+                <a href="#" class="hover:text-accent transition-colors"><i class="ph ph-envelope-simple"></i></a>
+            </div>
+            <div class="md:ml-8 mt-4 md:mt-0 text-xs font-bold uppercase tracking-widest text-muted opacity-70" id="connection-status"></div>
         </div>
         <p class="mt-6 text-xs text-muted uppercase tracking-widest">© 2025 • Van Gogh Edition</p>
     </footer>
@@ -446,16 +482,12 @@
     </div>
 
     <script>
-        // -------------------------------------------------------------------------
-        // ⚠️ ZONA DE CONFIGURACIÓN DE GEMINI (OBLIGATORIO PARA LA MUSA Y TTS)
-        // -------------------------------------------------------------------------
-        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; 
-         
-        const ADMIN_PASSWORD = "vincent"; // CONTRASEÑA DE AUTOR
+        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU";
+        const ADMIN_PASSWORD = "vincent"; 
 
         let currentWorkId = null;
         let currentAudio = null;
-        window.obrasGlobales = []; 
+        window.obrasGlobales = [];
 
         // --- GESTIÓN DE TEMA & ADMIN ---
         function initTheme() {
@@ -470,7 +502,6 @@
                 }
             });
 
-            // Lógica de Admin
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('admin')) localStorage.setItem('isAdmin', 'true');
             if (localStorage.getItem('isAdmin') === 'true') {
@@ -569,7 +600,7 @@
 
             if (window.guardarObraNueva) {
                 const success = await window.guardarObraNueva(titulo, categoria, contenido, finalImageBase64, fechaFormato);
-                if (success) { cerrarModalNuevo(); } 
+                if (success) { cerrarModalNuevo(); } 
                 else { btn.innerText = "Reintentar"; btn.disabled = false; }
             } else {
                 alert("Error: Módulo no cargado.");
@@ -718,7 +749,7 @@
         const modalBody = document.getElementById('modal-card');
         const aboutModal = document.getElementById('about-modal');
 
-        window.currentFilter = 'todos'; 
+        window.currentFilter = 'todos'; 
 
         window.renderizarObras = function(filtro = 'todos') {
             window.currentFilter = filtro;
@@ -747,11 +778,11 @@
                     
                     const imgBadge = obra.imagen ? '<span class="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full"><i class="ph-bold ph-image"></i></span>' : '';
                     
-                    // Botón borrar (Solo si es admin)
+                    // Botón borrar (Solo si es admin) - MEJORADO PARA NO SER INVASIVO
                     const isAdmin = localStorage.getItem('isAdmin') === 'true';
                     let deleteBtn = '';
                     if (isAdmin) {
-                        deleteBtn = `<button onclick="event.stopPropagation(); confirmarBorrado('${obra.id}')" class="absolute top-4 right-4 bg-white/80 hover:bg-red-100 text-red-500 p-2 rounded-full shadow-sm z-10 transition-colors" title="Borrar obra"><i class="ph-bold ph-trash"></i></button>`;
+                        deleteBtn = `<button onclick="event.stopPropagation(); confirmarBorrado('${obra.id}')" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 p-1.5 rounded-full shadow-sm z-20 transition-all duration-200 transform scale-90 hover:scale-100" title="Borrar obra"><i class="ph-bold ph-trash text-sm"></i></button>`;
                     }
 
                     el.innerHTML = `
@@ -760,7 +791,7 @@
                             <span class="text-xs font-bold uppercase tracking-wider text-accent bg-teal-50 dark:bg-teal-900/30 px-2 py-1 rounded border border-teal-100 dark:border-teal-800">${obra.categoria}</span>
                             <span class="text-xs text-muted font-mono">${obra.fecha}</span>
                         </div>
-                        <h3 class="font-serif text-3xl font-medium mb-3 group-hover:text-accent transition-colors leading-tight text-main flex items-center pr-8">${obra.titulo} ${imgBadge}</h3>
+                        <h3 class="font-serif text-3xl font-medium mb-3 group-hover:text-accent transition-colors leading-tight text-main flex items-center pr-4">${obra.titulo} ${imgBadge}</h3>
                         <p class="text-muted font-sans text-sm leading-relaxed mb-6 line-clamp-3">${obra.resumen}</p>
                         <div class="mt-auto pt-4 border-t border-gray-200/20 dark:border-white/10 flex justify-end">
                             <span class="text-sm font-medium text-muted group-hover:text-accent transition-colors flex items-center gap-1">Leer <i class="ph-bold ph-arrow-right"></i></span>
@@ -819,6 +850,12 @@
         document.addEventListener('keydown', (e) => { if(e.key === "Escape") { closeReader(); window.closeAbout(); cerrarModalNuevo(); } });
 
         initTheme();
+        if (window.renderizarObras) {
+            const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
+            if(localData.length > 0) window.obrasGlobales = localData;
+            else window.obrasGlobales = obrasPorDefecto;
+            window.renderizarObras();
+        }
         
     </script>
 </body>
