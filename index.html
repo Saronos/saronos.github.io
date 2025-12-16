@@ -20,113 +20,150 @@
     <!-- Marked JS -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
+    <!-- MÓDULO DE GESTIÓN DE DATOS (NUBE + LOCAL) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuración Firebase (entorno)
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
+        // --- GESTIÓN DE ESTADO ---
+        let useLocalMode = false;
+        let db = null;
+        let auth = null;
+        let appId = 'default-app-id';
         let currentUser = null;
-        let obras = []; 
 
-        async function initAuth() {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        }
+        // Obras por defecto (Hardcoded para que siempre haya algo que ver)
+        const obrasPorDefecto = [
+            { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...", contenido: "El sonido de la cafetera era lo único que rompía el silencio de la cocina a las tres de la mañana. No es que tuviera insomnio, es que la ciudad se siente diferente cuando nadie la mira.", timestamp: 1 },
+            { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás no fue el error...", contenido: "Mirar atrás\nno fue el error.\nEl error fue creer\nque lo que dejábamos\nseguía existiendo.", timestamp: 2 }
+        ];
 
-        initAuth();
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                subscribeToObras();
-            }
-        });
-
-        function subscribeToObras() {
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'obras_literarias');
-            
-            onSnapshot(colRef, (snapshot) => {
-                const tempObras = [];
-                snapshot.forEach(doc => {
-                    tempObras.push({ id: doc.id, ...doc.data() });
-                });
-
-                tempObras.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                obras = tempObras;
+        // --- INTENTO DE CONEXIÓN A NUBE ---
+        try {
+            // Verificamos si existen las variables de entorno (Solo existen en el editor, no en GitHub)
+            if (typeof __firebase_config !== 'undefined') {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 
-                if (obras.length === 0) {
-                   obras = [...defaultObras];
+                // Autenticación
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
                 }
 
-                window.renderizarObras(window.currentFilter || 'todos');
-                console.log("Datos actualizados desde la nube:", obras.length);
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        subscribeToObrasCloud();
+                    }
+                });
+            } else {
+                throw new Error("Configuración de nube no encontrada");
+            }
+        } catch (e) {
+            console.log("⚠️ Modo Nube no disponible. Activando Modo Local (LocalStorage).", e);
+            useLocalMode = true;
+            subscribeToObrasLocal();
+        }
+
+        // --- LÓGICA DE SUSCRIPCIÓN ---
+        
+        // 1. Modo Nube (Firebase)
+        function subscribeToObrasCloud() {
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'obras_literarias');
+            onSnapshot(colRef, (snapshot) => {
+                const tempObras = [];
+                snapshot.forEach(doc => tempObras.push({ id: doc.id, ...doc.data() }));
+                actualizarInterfaz(tempObras);
             }, (error) => {
-                console.error("Error escuchando obras:", error);
+                console.error("Error nube, pasando a local", error);
+                useLocalMode = true;
+                subscribeToObrasLocal();
             });
         }
 
-        window.guardarEnNube = async (titulo, categoria, contenido, imagenBase64, fechaTexto) => {
-            if (!currentUser) {
-                alert("Conectando con el servidor... intenta de nuevo en un segundo.");
-                return;
+        // 2. Modo Local (LocalStorage)
+        function subscribeToObrasLocal() {
+            // Cargar de LS
+            const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
+            // Si no hay datos locales, usar los por defecto para mostrar algo, pero no guardar
+            let obrasA_Mostrar = localData.length > 0 ? localData : obrasPorDefecto;
+            
+            // Combinar con defaults si se quiere siempre mostrar los defaults
+            // Para simplicidad, si hay locales mostramos locales + defaults si no se repiten
+            if (localData.length > 0) {
+                // Simple merge visual
+                obrasA_Mostrar = [...localData, ...obrasPorDefecto];
             }
+            
+            actualizarInterfaz(obrasA_Mostrar);
+        }
 
-            try {
-                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'obras_literarias');
-                await addDoc(colRef, {
-                    titulo: titulo,
-                    categoria: categoria,
-                    contenido: contenido,
-                    resumen: contenido.substring(0, 100) + (contenido.length > 100 ? "..." : ""),
-                    fecha: fechaTexto,
-                    timestamp: Date.now(),
-                    imagen: imagenBase64 || null,
-                    autorId: currentUser.uid 
-                });
+        // --- ACTUALIZAR UI ---
+        function actualizarInterfaz(listaObras) {
+            // Ordenar por fecha (más reciente primero)
+            listaObras.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            // Exponer a window para que la UI (script normal) lo vea
+            window.obrasGlobales = listaObras; 
+            if (window.renderizarObras) window.renderizarObras(window.currentFilter || 'todos');
+        }
+
+        // --- FUNCIÓN PÚBLICA DE GUARDADO ---
+        window.guardarObraNueva = async (titulo, categoria, contenido, imagenBase64, fechaTexto) => {
+            const nuevaObra = {
+                titulo, categoria, contenido,
+                resumen: contenido.substring(0, 100) + "...",
+                fecha: fechaTexto,
+                timestamp: Date.now(),
+                imagen: imagenBase64 || null
+            };
+
+            if (useLocalMode) {
+                // Guardar en LocalStorage
+                const actuales = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
+                actuales.unshift(nuevaObra); // Añadir al principio
+                localStorage.setItem('obras_vangogh_v2', JSON.stringify(actuales));
+                
+                alert("✨ Obra guardada en tu dispositivo (Modo Local).");
+                subscribeToObrasLocal(); // Refrescar
                 return true;
-            } catch (e) {
-                console.error("Error guardando:", e);
-                alert("Error al guardar. Intenta de nuevo.");
-                return false;
+            } else {
+                // Guardar en Firebase
+                if (!currentUser) return false;
+                try {
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'obras_literarias');
+                    await addDoc(colRef, { ...nuevaObra, autorId: currentUser.uid });
+                    return true;
+                } catch (e) {
+                    console.error(e);
+                    alert("Error subiendo a la nube. Se guardará en local por seguridad.");
+                    // Fallback a local si falla nube
+                    useLocalMode = true;
+                    return window.guardarObraNueva(titulo, categoria, contenido, imagenBase64, fechaTexto);
+                }
             }
         };
 
+        // Inicializar UI si ya cargó
+        if (window.renderizarObras) subscribeToObrasLocal();
     </script>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) { registration.unregister(); }
-            });
-        }
+        // Limpieza de SW antiguos
+        if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(r => r.forEach(sw => sw.unregister()));
 
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['"Outfit"', 'sans-serif'],
-                        serif: ['"Cormorant Garamond"', 'serif'],
-                    },
-                    colors: {
-                        vangogh: {
-                            dark: '#0b1120', blue: '#1e3a8a', teal: '#14b8a6', yellow: '#facc15', lilac: '#a78bfa',
-                        }
-                    },
-                    boxShadow: {
-                        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
-                        'glow': '0 0 20px rgba(45, 212, 191, 0.3)',
-                    }
+                    fontFamily: { sans: ['"Outfit"', 'sans-serif'], serif: ['"Cormorant Garamond"', 'serif'] },
+                    colors: { vangogh: { dark: '#0b1120', blue: '#1e3a8a', teal: '#14b8a6', yellow: '#facc15', lilac: '#a78bfa' } },
+                    boxShadow: { 'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)', 'glow': '0 0 20px rgba(45, 212, 191, 0.3)' }
                 }
             }
         }
@@ -193,7 +230,7 @@
                 <button onclick="filtrarObras('todos')" class="nav-btn px-4 py-1.5 rounded-full text-sm transition-all active-nav" id="btn-todos">Todo</button>
                 <button onclick="filtrarObras('Poesía')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-poesia">Poesía</button>
                 <button onclick="filtrarObras('Relato')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-relato">Relatos</button>
-                <button onclick="filtrarObras('Microcuentos')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-microcuentos">Microcuentos</button>
+                <button onclick="filtrarObras('Microcuentos')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-microcuentos">Micros</button>
             </div>
 
             <div class="flex items-center gap-2 md:gap-3">
@@ -371,17 +408,11 @@
 
     <script>
         const apiKey = ""; 
-        const ADMIN_PASSWORD = "vincent"; // CONTRASEÑA DE AUTOR (¡Cámbiala aquí!)
-
-        // --- DEFAULTS ---
-        const defaultObras = [
-            { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera...", contenido: "El sonido de la cafetera era lo único que rompía el silencio..." },
-            { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás...", contenido: "Mirar atrás\nno fue el error." }
-        ];
+        const ADMIN_PASSWORD = "vincent"; // CONTRASEÑA DE AUTOR
 
         let currentWorkId = null;
         let currentAudio = null;
-        window.obras = []; 
+        window.obrasGlobales = []; // Inicializamos vacío, el módulo lo rellena
 
         // --- GESTIÓN DE TEMA & ADMIN ---
         function initTheme() {
@@ -396,12 +427,9 @@
                 }
             });
 
-            // Lógica de Admin (Mostrar botón si URL tiene ?admin=true o si ya se logueó antes)
+            // Lógica de Admin
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('admin')) {
-                localStorage.setItem('isAdmin', 'true');
-            }
-
+            if (urlParams.has('admin')) localStorage.setItem('isAdmin', 'true');
             if (localStorage.getItem('isAdmin') === 'true') {
                 const btn = document.getElementById('btn-add-work');
                 if (btn) btn.classList.remove('hidden');
@@ -467,7 +495,6 @@
             document.getElementById('remove-image').classList.add('hidden');
         }
 
-        // Procesa la imagen (resize) y llama a guardar en nube
         async function processAndSave() {
             const titulo = document.getElementById('new-title').value;
             const categoria = document.getElementById('new-category').value;
@@ -475,22 +502,17 @@
 
             if (!titulo || !contenido) { alert("Título y contenido obligatorios."); return; }
 
-            // SEGURIDAD: Preguntar contraseña antes de procesar nada
             const userPass = prompt("🔐 Seguridad: Por favor, introduce la contraseña de autor:");
-            if (userPass !== ADMIN_PASSWORD) {
-                alert("⛔ Contraseña incorrecta. Acceso denegado.");
-                return;
-            }
+            if (userPass !== ADMIN_PASSWORD) { alert("⛔ Contraseña incorrecta. Acceso denegado."); return; }
 
             const btn = document.getElementById('btn-save-cloud');
-            btn.innerText = "Subiendo...";
+            btn.innerText = "Procesando...";
             btn.disabled = true;
 
             const now = new Date();
             const fechaFormato = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 
             let finalImageBase64 = null;
-
             if (currentImageFile) {
                 try {
                     finalImageBase64 = await resizeImage(currentImageFile);
@@ -502,20 +524,15 @@
                 }
             }
 
-            if (window.guardarEnNube) {
-                const success = await window.guardarEnNube(titulo, categoria, contenido, finalImageBase64, fechaFormato);
-                if (success) {
-                    cerrarModalNuevo();
-                } else {
-                    btn.innerText = "Reintentar";
-                    btn.disabled = false;
-                }
+            if (window.guardarObraNueva) {
+                const success = await window.guardarObraNueva(titulo, categoria, contenido, finalImageBase64, fechaFormato);
+                if (success) { cerrarModalNuevo(); } 
+                else { btn.innerText = "Reintentar"; btn.disabled = false; }
             } else {
-                alert("Error de conexión. Recarga la página.");
+                alert("Error: Módulo no cargado.");
             }
         }
 
-        // Utilidad: Redimensionar imagen en cliente para ahorrar espacio en DB
         function resizeImage(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -525,18 +542,11 @@
                     img.src = event.target.result;
                     img.onload = () => {
                         const elem = document.createElement('canvas');
-                        const maxWidth = 800;
-                        const maxHeight = 800;
-                        let width = img.width;
-                        let height = img.height;
-
-                        if (width > height) {
-                            if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
-                        } else {
-                            if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
-                        }
-                        elem.width = width;
-                        elem.height = height;
+                        const maxWidth = 800; const maxHeight = 800;
+                        let width = img.width; let height = img.height;
+                        if (width > height) { if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; } }
+                        else { if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; } }
+                        elem.width = width; elem.height = height;
                         const ctx = elem.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
                         resolve(elem.toDataURL('image/jpeg', 0.7));
@@ -576,7 +586,7 @@
         function cerrarMusa() { document.getElementById('musa-container').classList.add('hidden'); }
 
         async function analizarObraActual() {
-            const obra = window.obras.find(o => o.id === currentWorkId); // Usar window.obras actualizado por Firebase
+            const obra = window.obrasGlobales.find(o => o.id === currentWorkId);
             if (!obra) return;
             const contentDiv = document.getElementById('ai-analysis-text');
             document.getElementById('ai-analysis-container').classList.remove('hidden');
@@ -588,7 +598,7 @@
         }
 
         async function leerObraEnVozAlta() {
-            const obra = window.obras.find(o => o.id === currentWorkId);
+            const obra = window.obrasGlobales.find(o => o.id === currentWorkId);
             if (!obra) return;
             const btn = document.getElementById('btn-tts');
             if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>'; return; }
@@ -626,13 +636,12 @@
         const modalBody = document.getElementById('modal-card');
         const aboutModal = document.getElementById('about-modal');
 
-        window.currentFilter = 'todos'; // Para refrescar al recibir datos
+        window.currentFilter = 'todos'; 
 
         window.renderizarObras = function(filtro = 'todos') {
             window.currentFilter = filtro;
             galeria.innerHTML = '';
             
-            // Actualizar botones
             document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('active-nav'); btn.classList.add('text-muted'); });
             let activeBtnId = 'btn-todos';
             if (filtro === 'Poesía') activeBtnId = 'btn-poesia';
@@ -641,11 +650,8 @@
             const activeBtn = document.getElementById(activeBtnId);
             if(activeBtn) { activeBtn.classList.add('active-nav'); activeBtn.classList.remove('text-muted'); }
 
-            // Usar window.obras (poblada por Firebase o defaults)
-            const sourceObras = window.obras.length > 0 ? window.obras : defaultObras;
-
-            let filtered = sourceObras;
-            if (filtro !== 'todos') filtered = sourceObras.filter(o => o.categoria === filtro);
+            let filtered = window.obrasGlobales;
+            if (filtro !== 'todos') filtered = window.obrasGlobales.filter(o => o.categoria === filtro);
 
             if (filtered.length === 0) {
                 document.getElementById('no-results').classList.remove('hidden');
@@ -674,7 +680,7 @@
         }
 
         function abrirLectura(id) {
-            const obra = window.obras.find(o => o.id === id) || defaultObras.find(o => o.id === id);
+            const obra = window.obrasGlobales.find(o => o.id === id);
             if (!obra) return;
             currentWorkId = id;
             document.getElementById('ai-analysis-container').classList.add('hidden');
@@ -721,8 +727,7 @@
         document.addEventListener('keydown', (e) => { if(e.key === "Escape") { closeReader(); window.closeAbout(); cerrarModalNuevo(); } });
 
         initTheme();
-        // Render inicial con defaults mientras carga Firebase
-        renderizarObras();
+        
     </script>
 </body>
 </html>
