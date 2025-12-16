@@ -94,7 +94,7 @@
         }
 
         function subscribeToObrasLocal() {
-            // Accedemos a la variable global definida en el otro script
+            // Accedemos a la variable global de forma segura
             const defaults = window.obrasPorDefecto || [];
             const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
             let obrasA_Mostrar = localData.length > 0 ? localData : defaults;
@@ -368,7 +368,7 @@
     </div>
 
     <script>
-        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; // API Key de Gemini
+        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; // ⚠️ Pega tu API Key de Gemini AQUÍ
 
         // --- DEFAULTS ---
         window.obrasPorDefecto = [
@@ -656,6 +656,12 @@
         document.addEventListener('keydown', (e) => { if(e.key === "Escape") { closeReader(); window.closeAbout(); cerrarModalNuevo(); } });
 
         initTheme();
+        if (window.renderizarObras) {
+            const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
+            if(localData.length > 0) window.obrasGlobales = localData;
+            else window.obrasGlobales = obrasPorDefecto;
+            window.renderizarObras();
+        }
         
     </script>
 </body>
