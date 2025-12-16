@@ -2,10 +2,6 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ecos de Cristal | Comunidad</title>
     
@@ -20,15 +16,25 @@
     <!-- Marked JS -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-    <!-- MÓDULO DE GESTIÓN DE DATOS (NUBE + LOCAL) -->
+    <!-- CONFIGURACIÓN GLOBAL -->
+    <script>
+        window.GEMINI_API_KEY = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU";
+        window.ADMIN_PASSWORD = "vincent";
+        
+        window.obrasPorDefecto = [
+            { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...", contenido: "El sonido de la cafetera era lo único que rompía el silencio de la cocina a las tres de la mañana. No es que tuviera insomnio, es que la ciudad se siente diferente cuando nadie la mira.", timestamp: 1 },
+            { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás no fue el error...", contenido: "Mirar atrás\nno fue el error.\nEl error fue creer\nque lo que dejábamos\nseguía existiendo.", timestamp: 2 }
+        ];
+
+        window.obrasGlobales = []; 
+    </script>
+
+    <!-- MÓDULO FIREBASE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // -------------------------------------------------------------------------
-        // CONFIGURACIÓN DE FIREBASE
-        // -------------------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyDtMIZq6XxcdcRmui6BjHvgb25w2EW5fTw",
             authDomain: "vincent-df06a.firebaseapp.com",
@@ -39,15 +45,13 @@
             measurementId: "G-4ZLVH98BV7"
         };
 
-        // --- GESTIÓN DE ESTADO ---
         let useLocalMode = false;
         let db = null;
         let auth = null;
         let currentUser = null;
-        
         const COLLECTION_NAME = 'obras_literarias'; 
 
-        // --- INTENTO DE CONEXIÓN A NUBE ---
+        // Conexión
         try {
             if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("TU_API_KEY_FIREBASE")) {
                 const app = initializeApp(firebaseConfig);
@@ -69,7 +73,7 @@
                 throw new Error("Falta configurar Firebase.");
             }
         } catch (e) {
-            console.log("⚠️ Modo Nube no disponible. Activando Modo Local.", e);
+            console.log("Activando Modo Local.", e);
             activarModoLocal();
         }
 
@@ -79,7 +83,6 @@
             actualizarIndicadorEstado(false);
         }
 
-        // --- SUSCRIPCIONES ---
         function subscribeToObrasCloud() {
             const colRef = collection(db, COLLECTION_NAME);
             onSnapshot(colRef, (snapshot) => {
@@ -88,13 +91,12 @@
                 actualizarInterfaz(tempObras);
                 actualizarIndicadorEstado(true); 
             }, (error) => {
-                console.error("Error leyendo colección:", error);
+                console.error("Error lectura:", error);
                 activarModoLocal();
             });
         }
 
         function subscribeToObrasLocal() {
-            // Accedemos a la variable global de forma segura
             const defaults = window.obrasPorDefecto || [];
             const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
             let obrasA_Mostrar = localData.length > 0 ? localData : defaults;
@@ -119,11 +121,11 @@
                 el.innerHTML = online 
                     ? '<span class="w-2 h-2 rounded-full bg-green-500 inline-block mr-1"></span> Nube' 
                     : '<span class="w-2 h-2 rounded-full bg-orange-400 inline-block mr-1"></span> Local';
-                el.title = online ? "Conectado a Firebase" : "Modo sin conexión (Solo tú ves los cambios)";
+                el.title = online ? "Conectado a Firebase" : "Modo sin conexión";
             }
         }
 
-        // --- GUARDADO ---
+        // Funciones Globales para UI
         window.guardarObraNueva = async (titulo, categoria, contenido, imagenBase64, fechaTexto) => {
             const nuevaObra = {
                 titulo, categoria, contenido,
@@ -155,7 +157,6 @@
             }
         };
 
-        // --- BORRADO ---
         window.borrarObraGlobal = async (id) => {
             if (id === 1 || id === 2) { alert("No se pueden borrar los ejemplos."); return false; }
 
@@ -181,6 +182,7 @@
     </script>
 
     <script>
+        // Limpieza SW
         if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(r => r.forEach(sw => sw.unregister()));
 
         tailwind.config = {
@@ -367,53 +369,11 @@
         </div>
     </div>
 
+    <!-- UI Logic Script -->
     <script>
-        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; // ⚠️ Pega tu API Key de Gemini AQUÍ
-
-        // --- DEFAULTS ---
-        window.obrasPorDefecto = [
-            { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera...", contenido: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...", timestamp: 1 },
-            { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás...", contenido: "Mirar atrás\nno fue el error.", timestamp: 2 }
-        ];
-
-        const ADMIN_PASSWORD = "vincent";
-
         let currentWorkId = null;
         let currentAudio = null;
-        window.obrasGlobales = [];
 
-        // --- GESTIÓN DE TEMA & ADMIN ---
-        function initTheme() {
-            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark'); updateThemeIcon(true);
-            } else {
-                document.documentElement.classList.remove('dark'); updateThemeIcon(false);
-            }
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-                if (!('theme' in localStorage)) {
-                    event.matches ? (document.documentElement.classList.add('dark'), updateThemeIcon(true)) : (document.documentElement.classList.remove('dark'), updateThemeIcon(false));
-                }
-            });
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('admin')) localStorage.setItem('isAdmin', 'true');
-            if (localStorage.getItem('isAdmin') === 'true') {
-                const btn = document.getElementById('btn-add-work');
-                if (btn) btn.classList.remove('hidden');
-            }
-        }
-
-        function toggleTheme() {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.theme = isDark ? 'dark' : 'light';
-            updateThemeIcon(isDark);
-        }
-        function updateThemeIcon(isDark) {
-            const icon = document.getElementById('theme-icon');
-            icon.classList.remove(isDark ? 'ph-sun' : 'ph-moon-stars');
-            icon.classList.add(isDark ? 'ph-moon-stars' : 'ph-sun');
-        }
-
-        // --- UI ---
         const addModal = document.getElementById('add-modal');
         const addModalCard = document.getElementById('add-modal-card');
         let currentImageFile = null;
@@ -445,7 +405,7 @@
             const titulo = document.getElementById('new-title').value; const categoria = document.getElementById('new-category').value; const contenido = document.getElementById('new-content').value;
             if (!titulo || !contenido) { alert("Título y contenido obligatorios."); return; }
             const userPass = prompt("🔐 Seguridad: Por favor, introduce la contraseña de autor:");
-            if (userPass !== ADMIN_PASSWORD) { alert("⛔ Contraseña incorrecta."); return; }
+            if (userPass !== window.ADMIN_PASSWORD) { alert("⛔ Contraseña incorrecta."); return; }
             const btn = document.getElementById('btn-save-cloud'); btn.innerText = "Procesando..."; btn.disabled = true;
             const now = new Date(); const fechaFormato = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
             let finalImageBase64 = null;
@@ -478,27 +438,31 @@
         window.confirmarBorrado = async (id) => {
             if (!confirm("¿Borrar permanentemente?")) return;
             const pass = prompt("🔐 Contraseña de autor:");
-            if (pass !== ADMIN_PASSWORD) { alert("⛔ Contraseña incorrecta."); return; }
+            if (pass !== window.ADMIN_PASSWORD) { alert("⛔ Contraseña incorrecta."); return; }
             if (window.borrarObraGlobal) await window.borrarObraGlobal(id);
         }
 
         // --- LÓGICA IA ---
         async function callGeminiAPI(payload) {
-            // Modelo estable público
-            const model = 'gemini-1.5-flash';
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-            const delays = [1000, 2000, 4000];
-            for (let i = 0; i <= delays.length; i++) {
+            const models = ['gemini-1.5-flash', 'gemini-pro'];
+            let lastError;
+            
+            for (const model of models) {
                 try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${window.GEMINI_API_KEY}`;
                     const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    if (!response.ok) {
+                         if(response.status === 404) { console.warn(`${model} no encontrado, probando siguiente...`); continue; }
+                         throw new Error(`HTTP error! status: ${response.status}`);
+                    }
                     return await response.json();
-                } catch (error) { if (i === delays.length) throw error; await new Promise(r => setTimeout(r, delays[i])); }
+                } catch (error) { lastError = error; }
             }
+            throw lastError;
         }
 
         async function invocarMusa() {
-            if (!apiKey) { alert("Falta API Key"); return; }
+            if (!window.GEMINI_API_KEY) { alert("Falta API Key"); return; }
             const container = document.getElementById('musa-container');
             const content = document.getElementById('musa-content');
             const btnRegenerar = document.getElementById('btn-regenerar-musa');
@@ -508,12 +472,12 @@
                 const data = await callGeminiAPI({ contents: [{ parts: [{ text: "Genera prompt escritura creativa breve (20 palabras) inspirado en Van Gogh." }] }] });
                 content.innerHTML = marked.parse(data.candidates[0].content.parts[0].text);
                 btnRegenerar.classList.remove('hidden');
-            } catch (error) { content.innerHTML = "El pincel se ha secado..."; btnRegenerar.classList.remove('hidden'); }
+            } catch (error) { content.innerHTML = "El pincel se ha secado... (Intenta más tarde)"; btnRegenerar.classList.remove('hidden'); }
         }
         function cerrarMusa() { document.getElementById('musa-container').classList.add('hidden'); }
 
         async function analizarObraActual() {
-            if (!apiKey) { alert("Falta API Key"); return; }
+            if (!window.GEMINI_API_KEY) { alert("Falta API Key"); return; }
             const obra = window.obrasGlobales.find(o => o.id === currentWorkId);
             if (!obra) return;
             const contentDiv = document.getElementById('ai-analysis-text');
@@ -525,7 +489,6 @@
             } catch (error) { contentDiv.innerHTML = "No pude visualizar la obra ahora."; }
         }
 
-        // FALLBACK HÍBRIDO DE VOZ: Intentar navegador siempre primero para fiabilidad en GH Pages
         function leerObraEnVozAlta() {
             const obra = window.obrasGlobales.find(o => o.id === currentWorkId);
             if (!obra) return;
@@ -540,7 +503,6 @@
             btn.innerHTML = '<i class="ph-fill ph-spinner animate-spin"></i>';
             
             const utterance = new SpeechSynthesisUtterance(obra.contenido);
-            // Intentar buscar voz de español de españa masculina (aproximación)
             const voices = window.speechSynthesis.getVoices();
             const esVoice = voices.find(v => v.lang.includes('es-ES') && (v.name.includes('Male') || v.name.includes('Google') || v.name.includes('Microsoft')));
             if (esVoice) utterance.voice = esVoice;
@@ -559,6 +521,15 @@
         const aboutModal = document.getElementById('about-modal');
 
         window.currentFilter = 'todos'; 
+        
+        function closeReader() {
+            if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+            modal.classList.add('opacity-0'); modalBody.classList.remove('scale-100'); modalBody.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); document.body.style.overflow = ''; }, 500);
+        }
+
+        // Make closeReader globally available BEFORE using it in event listeners
+        window.closeReader = closeReader;
 
         window.renderizarObras = function(filtro = 'todos') {
             window.currentFilter = filtro;
@@ -631,17 +602,11 @@
             setTimeout(() => { modal.classList.remove('opacity-0'); modalBody.classList.remove('scale-95'); modalBody.classList.add('scale-100'); }, 10);
         }
 
-        function closeReader() {
-            if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-            modal.classList.add('opacity-0'); modalBody.classList.remove('scale-100'); modalBody.classList.add('scale-95');
-            setTimeout(() => { modal.classList.add('hidden'); document.body.style.overflow = ''; }, 500);
-        }
-
         window.filtrarObras = renderizarObras;
         window.invocarMusa = invocarMusa;
         window.cerrarMusa = cerrarMusa;
         window.abrirLectura = abrirLectura;
-        window.closeReader = closeReader;
+        // window.closeReader is already set
         window.openAbout = () => { aboutModal.classList.remove('hidden'); setTimeout(() => { aboutModal.classList.remove('opacity-0'); aboutModal.children[1].classList.remove('scale-95'); aboutModal.children[1].classList.add('scale-100'); }, 10); };
         window.closeAbout = () => { aboutModal.classList.add('opacity-0'); aboutModal.children[1].classList.remove('scale-100'); aboutModal.children[1].classList.add('scale-95'); setTimeout(() => aboutModal.classList.add('hidden'), 300); };
         window.analizarObraActual = analizarObraActual;
@@ -653,16 +618,47 @@
         window.previewImage = previewImage;
         window.removeImage = removeImage;
 
-        document.addEventListener('keydown', (e) => { if(e.key === "Escape") { closeReader(); window.closeAbout(); cerrarModalNuevo(); } });
+        document.addEventListener('keydown', (e) => { if(e.key === "Escape") { window.closeReader(); window.closeAbout(); cerrarModalNuevo(); } });
+
+        // GESTIÓN DE TEMA & ADMIN
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark'); updateThemeIcon(true);
+            } else {
+                document.documentElement.classList.remove('dark'); updateThemeIcon(false);
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (!('theme' in localStorage)) {
+                    event.matches ? (document.documentElement.classList.add('dark'), updateThemeIcon(true)) : (document.documentElement.classList.remove('dark'), updateThemeIcon(false));
+                }
+            });
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('admin')) localStorage.setItem('isAdmin', 'true');
+            if (localStorage.getItem('isAdmin') === 'true') {
+                const btn = document.getElementById('btn-add-work');
+                if (btn) btn.classList.remove('hidden');
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+            updateThemeIcon(isDark);
+        }
+        function updateThemeIcon(isDark) {
+            const icon = document.getElementById('theme-icon');
+            icon.classList.remove(isDark ? 'ph-sun' : 'ph-moon-stars');
+            icon.classList.add(isDark ? 'ph-moon-stars' : 'ph-sun');
+        }
 
         initTheme();
         if (window.renderizarObras) {
             const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
             if(localData.length > 0) window.obrasGlobales = localData;
-            else window.obrasGlobales = obrasPorDefecto;
+            else window.obrasGlobales = window.obrasPorDefecto;
             window.renderizarObras();
         }
-        
     </script>
 </body>
 </html>
