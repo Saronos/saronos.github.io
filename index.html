@@ -27,7 +27,7 @@
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // -------------------------------------------------------------------------
-        // CONFIGURACIÓN DE FIREBASE
+        // CONFIGURACIÓN DE FIREBASE (Tus datos)
         // -------------------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyDtMIZq6XxcdcRmui6BjHvgb25w2EW5fTw",
@@ -56,7 +56,7 @@
 
         // --- INTENTO DE CONEXIÓN A NUBE ---
         try {
-            if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("AIzaSyDtMIZq6XxcdcRmui6BjHvgb25w2EW5fTw")) {
+            if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("TU_API_KEY_FIREBASE")) {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
@@ -64,9 +64,6 @@
                 // Intentar autenticación anónima
                 signInAnonymously(auth).catch((error) => {
                     console.error("Error Auth:", error);
-                    if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed') {
-                        console.warn("⚠️ IMPORTANTE: Activa 'Anonymous Auth' en Firebase Console -> Authentication.");
-                    }
                     // Fallback a local
                     activarModoLocal();
                 });
@@ -100,23 +97,11 @@
                 actualizarInterfaz(tempObras);
                 actualizarIndicadorEstado(true); // Conectado
             }, (error) => {
-                // Manejo específico del error de permisos
+                console.error("Error conectando a colección:", error);
+                // Si falla por permisos, avisamos en consola pero pasamos a local
                 if (error.code === 'permission-denied') {
-                    console.warn("%c⚠️ ERROR DE PERMISOS FIREBASE", "color: red; font-size: 14px; font-weight: bold;");
-                    console.warn("Tus reglas de seguridad bloquean la lectura. Ve a Firebase Console -> Firestore -> Reglas y pega esto:");
-                    console.log(`
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /obras_literarias/{document} {
-      allow read: if true;
-      allow write: if true; 
-    }
-  }
-}
-                    `);
+                    console.warn("⚠️ ERROR DE PERMISOS: Recuerda cambiar las Reglas en Firebase Console a 'allow read, write: if true;'");
                 }
-                console.error("Error conectando a colección, pasando a local", error);
                 activarModoLocal();
             });
         }
@@ -218,7 +203,6 @@ service cloud.firestore {
 
         // Init
         if (window.renderizarObras) {
-            // Intentar renderizar local mientras conecta
             const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
             if(localData.length > 0) window.obrasGlobales = localData;
             else window.obrasGlobales = obrasPorDefecto;
@@ -483,7 +467,7 @@ service cloud.firestore {
 
     <script>
         const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU";
-        const ADMIN_PASSWORD = "vincent"; 
+        const ADMIN_PASSWORD = "vincent"; 
 
         let currentWorkId = null;
         let currentAudio = null;
@@ -600,7 +584,7 @@ service cloud.firestore {
 
             if (window.guardarObraNueva) {
                 const success = await window.guardarObraNueva(titulo, categoria, contenido, finalImageBase64, fechaFormato);
-                if (success) { cerrarModalNuevo(); } 
+                if (success) { cerrarModalNuevo(); } 
                 else { btn.innerText = "Reintentar"; btn.disabled = false; }
             } else {
                 alert("Error: Módulo no cargado.");
@@ -705,18 +689,18 @@ service cloud.firestore {
             if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>'; return; }
             btn.innerHTML = '<i class="ph-fill ph-spinner animate-spin"></i>';
             try {
-                const data = await callGeminiAPI({ 
-                    contents: [{ parts: [{ text: obra.contenido }] }], 
-                    generationConfig: { 
-                        responseModalities: ["AUDIO"], 
-                        speechConfig: { 
-                            voiceConfig: { 
-                                prebuiltVoiceConfig: { 
+                const data = await callGeminiAPI({ 
+                    contents: [{ parts: [{ text: obra.contenido }] }], 
+                    generationConfig: { 
+                        responseModalities: ["AUDIO"], 
+                        speechConfig: { 
+                            voiceConfig: { 
+                                prebuiltVoiceConfig: { 
                                     voiceName: "Fenrir" // Voz masculina profunda
-                                } 
-                            } 
-                        } 
-                    } 
+                                } 
+                            } 
+                        } 
+                    } 
                 }, true);
                 const binaryString = window.atob(data.candidates[0].content.parts[0].inlineData.data);
                 const bytes = new Uint8Array(binaryString.length);
@@ -749,7 +733,7 @@ service cloud.firestore {
         const modalBody = document.getElementById('modal-card');
         const aboutModal = document.getElementById('about-modal');
 
-        window.currentFilter = 'todos'; 
+        window.currentFilter = 'todos'; 
 
         window.renderizarObras = function(filtro = 'todos') {
             window.currentFilter = filtro;
