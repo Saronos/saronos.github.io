@@ -48,12 +48,6 @@
         
         const COLLECTION_NAME = 'obras_literarias'; 
 
-        // Obras por defecto
-        const obrasPorDefecto = [
-            { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...", contenido: "El sonido de la cafetera era lo único que rompía el silencio de la cocina a las tres de la mañana. No es que tuviera insomnio, es que la ciudad se siente diferente cuando nadie la mira.", timestamp: 1 },
-            { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás no fue el error...", contenido: "Mirar atrás\nno fue el error.\nEl error fue creer\nque lo que dejábamos\nseguía existiendo.", timestamp: 2 }
-        ];
-
         // --- INTENTO DE CONEXIÓN A NUBE ---
         try {
             if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("TU_API_KEY_FIREBASE")) {
@@ -476,6 +470,12 @@
         
         const ADMIN_PASSWORD = "vincent"; // CONTRASEÑA DE AUTOR
 
+        // Obras por defecto - Definidas AQUÍ en el script global para que sean accesibles
+        const obrasPorDefecto = [
+            { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...", contenido: "El sonido de la cafetera era lo único que rompía el silencio de la cocina a las tres de la mañana. No es que tuviera insomnio, es que la ciudad se siente diferente cuando nadie la mira.", timestamp: 1 },
+            { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás no fue el error...", contenido: "Mirar atrás\nno fue el error.\nEl error fue creer\nque lo que dejábamos\nseguía existiendo.", timestamp: 2 }
+        ];
+
         let currentWorkId = null;
         let currentAudio = null;
         window.obrasGlobales = []; 
@@ -770,7 +770,7 @@
                     
                     const imgBadge = obra.imagen ? '<span class="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full"><i class="ph-bold ph-image"></i></span>' : '';
                     
-                    // Botón borrar (Solo si es admin) - MEJORADO PARA NO SER INVASIVO
+                    // Botón borrar (Solo si es admin)
                     const isAdmin = localStorage.getItem('isAdmin') === 'true';
                     let deleteBtn = '';
                     if (isAdmin) {
