@@ -23,17 +23,36 @@
     <!-- MÓDULO DE GESTIÓN DE DATOS (NUBE + LOCAL) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // -------------------------------------------------------------------------
+        // ⚠️ ZONA DE CONFIGURACIÓN DE FIREBASE (OBLIGATORIO PARA QUE FUNCIONE ONLINE)
+        // 1. Ve a console.firebase.google.com -> Crea proyecto -> Añade App Web
+        // 2. Copia y pega tu configuración aquí abajo reemplazando los valores de ejemplo:
+        // -------------------------------------------------------------------------
+          const firebaseConfig = {
+            apiKey: "AIzaSyDtMIZq6XxcdcRmui6BjHvgb25w2EW5fTw",
+            authDomain: "vincent-df06a.firebaseapp.com",
+            projectId: "vincent-df06a",
+            storageBucket: "vincent-df06a.firebasestorage.app",
+            messagingSenderId: "332209312574",
+            appId: "1:332209312574:web:88ca364881d0b5d19c126f",
+            measurementId: "G-4ZLVH98BV7"
+          };
+        // -------------------------------------------------------------------------
 
         // --- GESTIÓN DE ESTADO ---
         let useLocalMode = false;
         let db = null;
         let auth = null;
-        let appId = 'default-app-id';
         let currentUser = null;
+        
+        // Identificador de la colección en la base de datos
+        // Puedes cambiar 'obras_literarias' por el nombre que prefieras
+        const COLLECTION_NAME = 'obras_literarias'; 
 
-        // Obras por defecto (Hardcoded para que siempre haya algo que ver)
+        // Obras por defecto (Se muestran si no hay conexión)
         const obrasPorDefecto = [
             { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...", contenido: "El sonido de la cafetera era lo único que rompía el silencio de la cocina a las tres de la mañana. No es que tuviera insomnio, es que la ciudad se siente diferente cuando nadie la mira.", timestamp: 1 },
             { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás no fue el error...", contenido: "Mirar atrás\nno fue el error.\nEl error fue creer\nque lo que dejábamos\nseguía existiendo.", timestamp: 2 }
@@ -41,20 +60,15 @@
 
         // --- INTENTO DE CONEXIÓN A NUBE ---
         try {
-            // Verificamos si existen las variables de entorno (Solo existen en el editor, no en GitHub)
-            if (typeof __firebase_config !== 'undefined') {
-                const firebaseConfig = JSON.parse(__firebase_config);
+            // Inicializamos Firebase con la config manual
+            // Nota: Si apiKey sigue siendo el placeholder, fallará y pasará a modo local
+            if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY_DE_FIREBASE") {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 
-                // Autenticación
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Autenticación Anónima
+                await signInAnonymously(auth);
 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
@@ -63,10 +77,10 @@
                     }
                 });
             } else {
-                throw new Error("Configuración de nube no encontrada");
+                throw new Error("Configuración de Firebase no establecida.");
             }
         } catch (e) {
-            console.log("⚠️ Modo Nube no disponible. Activando Modo Local (LocalStorage).", e);
+            console.log("⚠️ Modo Nube no disponible (Falta configuración). Activando Modo Local.", e);
             useLocalMode = true;
             subscribeToObrasLocal();
         }
@@ -75,13 +89,15 @@
         
         // 1. Modo Nube (Firebase)
         function subscribeToObrasCloud() {
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'obras_literarias');
+            // Nota: En tu proyecto propio de Firebase, la ruta es más simple:
+            const colRef = collection(db, COLLECTION_NAME);
+            
             onSnapshot(colRef, (snapshot) => {
                 const tempObras = [];
                 snapshot.forEach(doc => tempObras.push({ id: doc.id, ...doc.data() }));
                 actualizarInterfaz(tempObras);
             }, (error) => {
-                console.error("Error nube, pasando a local", error);
+                console.error("Error conectando a colección, pasando a local", error);
                 useLocalMode = true;
                 subscribeToObrasLocal();
             });
@@ -89,18 +105,15 @@
 
         // 2. Modo Local (LocalStorage)
         function subscribeToObrasLocal() {
-            // Cargar de LS
             const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
-            // Si no hay datos locales, usar los por defecto para mostrar algo, pero no guardar
             let obrasA_Mostrar = localData.length > 0 ? localData : obrasPorDefecto;
-            
-            // Combinar con defaults si se quiere siempre mostrar los defaults
-            // Para simplicidad, si hay locales mostramos locales + defaults si no se repiten
             if (localData.length > 0) {
-                // Simple merge visual
-                obrasA_Mostrar = [...localData, ...obrasPorDefecto];
+                // Combinamos visualmente para que no se vea vacío
+                // Filtramos por ID para evitar duplicados si los defaults tuvieran el mismo ID
+                const idsLocales = new Set(localData.map(o => o.id));
+                const defaultsUnicos = obrasPorDefecto.filter(o => !idsLocales.has(o.id));
+                obrasA_Mostrar = [...localData, ...defaultsUnicos];
             }
-            
             actualizarInterfaz(obrasA_Mostrar);
         }
 
@@ -126,25 +139,25 @@
             if (useLocalMode) {
                 // Guardar en LocalStorage
                 const actuales = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
-                actuales.unshift(nuevaObra); // Añadir al principio
+                // Usamos timestamp como ID en local
+                nuevaObra.id = Date.now();
+                actuales.unshift(nuevaObra);
                 localStorage.setItem('obras_vangogh_v2', JSON.stringify(actuales));
                 
-                alert("✨ Obra guardada en tu dispositivo (Modo Local).");
-                subscribeToObrasLocal(); // Refrescar
+                alert("✨ Obra guardada en tu dispositivo (Modo Local - Sin conexión a Nube configurada).");
+                subscribeToObrasLocal(); 
                 return true;
             } else {
                 // Guardar en Firebase
                 if (!currentUser) return false;
                 try {
-                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'obras_literarias');
+                    const colRef = collection(db, COLLECTION_NAME);
                     await addDoc(colRef, { ...nuevaObra, autorId: currentUser.uid });
                     return true;
                 } catch (e) {
                     console.error(e);
-                    alert("Error subiendo a la nube. Se guardará en local por seguridad.");
-                    // Fallback a local si falla nube
-                    useLocalMode = true;
-                    return window.guardarObraNueva(titulo, categoria, contenido, imagenBase64, fechaTexto);
+                    alert("Error subiendo a la nube. Comprueba las Reglas de Firestore en la consola de Firebase.");
+                    return false;
                 }
             }
         };
@@ -407,12 +420,18 @@
     </div>
 
     <script>
-        const apiKey = ""; 
+        // -------------------------------------------------------------------------
+        // ⚠️ ZONA DE CONFIGURACIÓN DE GEMINI AI (OBLIGATORIO PARA LA MUSA Y TTS)
+        // 1. Ve a https://aistudio.google.com/app/apikey y crea una key gratis.
+        // 2. Pégala abajo entre las comillas.
+        // -------------------------------------------------------------------------
+        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; 
+        
         const ADMIN_PASSWORD = "vincent"; // CONTRASEÑA DE AUTOR
 
         let currentWorkId = null;
         let currentAudio = null;
-        window.obrasGlobales = []; // Inicializamos vacío, el módulo lo rellena
+        window.obrasGlobales = []; 
 
         // --- GESTIÓN DE TEMA & ADMIN ---
         function initTheme() {
@@ -572,6 +591,10 @@
         }
 
         async function invocarMusa() {
+            if (apiKey === "PON_AQUI_TU_API_KEY_DE_GEMINI") {
+                alert("⚠️ Necesitas configurar tu API Key de Gemini en el código para usar esta función.");
+                return;
+            }
             const container = document.getElementById('musa-container');
             const content = document.getElementById('musa-content');
             const btnRegenerar = document.getElementById('btn-regenerar-musa');
@@ -586,6 +609,10 @@
         function cerrarMusa() { document.getElementById('musa-container').classList.add('hidden'); }
 
         async function analizarObraActual() {
+            if (apiKey === "PON_AQUI_TU_API_KEY_DE_GEMINI") {
+                alert("⚠️ Necesitas configurar tu API Key de Gemini en el código para usar esta función.");
+                return;
+            }
             const obra = window.obrasGlobales.find(o => o.id === currentWorkId);
             if (!obra) return;
             const contentDiv = document.getElementById('ai-analysis-text');
@@ -598,13 +625,29 @@
         }
 
         async function leerObraEnVozAlta() {
+            if (apiKey === "PON_AQUI_TU_API_KEY_DE_GEMINI") {
+                alert("⚠️ Necesitas configurar tu API Key de Gemini en el código para usar esta función.");
+                return;
+            }
             const obra = window.obrasGlobales.find(o => o.id === currentWorkId);
             if (!obra) return;
             const btn = document.getElementById('btn-tts');
             if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>'; return; }
             btn.innerHTML = '<i class="ph-fill ph-spinner animate-spin"></i>';
             try {
-                const data = await callGeminiAPI({ contents: [{ parts: [{ text: obra.contenido }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } } } }, true);
+                const data = await callGeminiAPI({ 
+                    contents: [{ parts: [{ text: obra.contenido }] }], 
+                    generationConfig: { 
+                        responseModalities: ["AUDIO"], 
+                        speechConfig: { 
+                            voiceConfig: { 
+                                prebuiltVoiceConfig: { 
+                                    voiceName: "Fenrir" // Voz masculina profunda
+                                } 
+                            } 
+                        } 
+                    } 
+                }, true);
                 const binaryString = window.atob(data.candidates[0].content.parts[0].inlineData.data);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
