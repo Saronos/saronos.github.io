@@ -27,7 +27,7 @@
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // -------------------------------------------------------------------------
-        // CONFIGURACIÓN DE FIREBASE (Tus datos)
+        // CONFIGURACIÓN DE FIREBASE
         // -------------------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyDtMIZq6XxcdcRmui6BjHvgb25w2EW5fTw",
@@ -56,6 +56,7 @@
 
         // --- INTENTO DE CONEXIÓN A NUBE ---
         try {
+            // Verificamos si la configuración parece válida (no es el placeholder)
             if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("TU_API_KEY_FIREBASE")) {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
@@ -64,6 +65,11 @@
                 // Intentar autenticación anónima
                 signInAnonymously(auth).catch((error) => {
                     console.error("Error Auth:", error);
+                    // Manejo específico del error de configuración auth
+                    if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed' || error.code === 'auth/admin-restricted-operation') {
+                        console.warn("⚠️ IMPORTANTE: La autenticación anónima no está habilitada en Firebase Console.");
+                        // No mostramos alerta intrusiva al inicio, solo fallback silencioso
+                    }
                     // Fallback a local
                     activarModoLocal();
                 });
@@ -97,10 +103,9 @@
                 actualizarInterfaz(tempObras);
                 actualizarIndicadorEstado(true); // Conectado
             }, (error) => {
-                console.error("Error conectando a colección:", error);
-                // Si falla por permisos, avisamos en consola pero pasamos a local
+                console.error("Error leyendo colección:", error);
                 if (error.code === 'permission-denied') {
-                    console.warn("⚠️ ERROR DE PERMISOS: Recuerda cambiar las Reglas en Firebase Console a 'allow read, write: if true;'");
+                    console.warn("⚠️ ERROR DE PERMISOS: Revisa las Reglas en Firebase Console.");
                 }
                 activarModoLocal();
             });
