@@ -56,7 +56,6 @@
 
         // --- INTENTO DE CONEXIÓN A NUBE ---
         try {
-            // Verificamos si la configuración parece válida (no es el placeholder)
             if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("TU_API_KEY_FIREBASE")) {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
@@ -68,7 +67,6 @@
                     // Manejo específico del error de configuración auth
                     if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed' || error.code === 'auth/admin-restricted-operation') {
                         console.warn("⚠️ IMPORTANTE: La autenticación anónima no está habilitada en Firebase Console.");
-                        // No mostramos alerta intrusiva al inicio, solo fallback silencioso
                     }
                     // Fallback a local
                     activarModoLocal();
@@ -471,12 +469,16 @@
     </div>
 
     <script>
-        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU";
-        const ADMIN_PASSWORD = "vincent"; 
+        // -------------------------------------------------------------------------
+        // ⚠️ ZONA DE CONFIGURACIÓN DE GEMINI (OBLIGATORIO PARA LA MUSA Y TTS)
+        // -------------------------------------------------------------------------
+        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; 
+        
+        const ADMIN_PASSWORD = "vincent"; // CONTRASEÑA DE AUTOR
 
         let currentWorkId = null;
         let currentAudio = null;
-        window.obrasGlobales = [];
+        window.obrasGlobales = []; 
 
         // --- GESTIÓN DE TEMA & ADMIN ---
         function initTheme() {
@@ -491,6 +493,7 @@
                 }
             });
 
+            // Lógica de Admin
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('admin')) localStorage.setItem('isAdmin', 'true');
             if (localStorage.getItem('isAdmin') === 'true') {
@@ -589,7 +592,7 @@
 
             if (window.guardarObraNueva) {
                 const success = await window.guardarObraNueva(titulo, categoria, contenido, finalImageBase64, fechaFormato);
-                if (success) { cerrarModalNuevo(); } 
+                if (success) { cerrarModalNuevo(); } 
                 else { btn.innerText = "Reintentar"; btn.disabled = false; }
             } else {
                 alert("Error: Módulo no cargado.");
@@ -650,7 +653,7 @@
         }
 
         async function invocarMusa() {
-            if (apiKey === "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU") {
+            if (!apiKey || apiKey.length < 10) {
                 alert("⚠️ Necesitas configurar tu API Key de Gemini en el código para usar esta función.");
                 return;
             }
@@ -668,7 +671,7 @@
         function cerrarMusa() { document.getElementById('musa-container').classList.add('hidden'); }
 
         async function analizarObraActual() {
-            if (apiKey === "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU") {
+            if (!apiKey || apiKey.length < 10) {
                 alert("⚠️ Necesitas configurar tu API Key de Gemini en el código para usar esta función.");
                 return;
             }
@@ -684,7 +687,7 @@
         }
 
         async function leerObraEnVozAlta() {
-            if (apiKey === "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU") {
+            if (!apiKey || apiKey.length < 10) {
                 alert("⚠️ Necesitas configurar tu API Key de Gemini en el código para usar esta función.");
                 return;
             }
@@ -694,18 +697,18 @@
             if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>'; return; }
             btn.innerHTML = '<i class="ph-fill ph-spinner animate-spin"></i>';
             try {
-                const data = await callGeminiAPI({ 
-                    contents: [{ parts: [{ text: obra.contenido }] }], 
-                    generationConfig: { 
-                        responseModalities: ["AUDIO"], 
-                        speechConfig: { 
-                            voiceConfig: { 
-                                prebuiltVoiceConfig: { 
+                const data = await callGeminiAPI({ 
+                    contents: [{ parts: [{ text: obra.contenido }] }], 
+                    generationConfig: { 
+                        responseModalities: ["AUDIO"], 
+                        speechConfig: { 
+                            voiceConfig: { 
+                                prebuiltVoiceConfig: { 
                                     voiceName: "Fenrir" // Voz masculina profunda
-                                } 
-                            } 
-                        } 
-                    } 
+                                } 
+                            } 
+                        } 
+                    } 
                 }, true);
                 const binaryString = window.atob(data.candidates[0].content.parts[0].inlineData.data);
                 const bytes = new Uint8Array(binaryString.length);
@@ -738,7 +741,7 @@
         const modalBody = document.getElementById('modal-card');
         const aboutModal = document.getElementById('about-modal');
 
-        window.currentFilter = 'todos'; 
+        window.currentFilter = 'todos'; 
 
         window.renderizarObras = function(filtro = 'todos') {
             window.currentFilter = filtro;
