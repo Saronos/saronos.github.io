@@ -27,11 +27,9 @@
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // -------------------------------------------------------------------------
-        // ⚠️ ZONA DE CONFIGURACIÓN DE FIREBASE (OBLIGATORIO PARA QUE FUNCIONE ONLINE)
-        // 1. Ve a console.firebase.google.com -> Crea proyecto -> Añade App Web
-        // 2. Copia y pega tu configuración aquí abajo reemplazando los valores de ejemplo:
+        // CONFIGURACIÓN DE FIREBASE (Datos proporcionados)
         // -------------------------------------------------------------------------
-          const firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyDtMIZq6XxcdcRmui6BjHvgb25w2EW5fTw",
             authDomain: "vincent-df06a.firebaseapp.com",
             projectId: "vincent-df06a",
@@ -39,7 +37,7 @@
             messagingSenderId: "332209312574",
             appId: "1:332209312574:web:88ca364881d0b5d19c126f",
             measurementId: "G-4ZLVH98BV7"
-          };
+        };
         // -------------------------------------------------------------------------
 
         // --- GESTIÓN DE ESTADO ---
@@ -48,11 +46,9 @@
         let auth = null;
         let currentUser = null;
         
-        // Identificador de la colección en la base de datos
-        // Puedes cambiar 'obras_literarias' por el nombre que prefieras
         const COLLECTION_NAME = 'obras_literarias'; 
 
-        // Obras por defecto (Se muestran si no hay conexión)
+        // Obras por defecto
         const obrasPorDefecto = [
             { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...", contenido: "El sonido de la cafetera era lo único que rompía el silencio de la cocina a las tres de la mañana. No es que tuviera insomnio, es que la ciudad se siente diferente cuando nadie la mira.", timestamp: 1 },
             { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás no fue el error...", contenido: "Mirar atrás\nno fue el error.\nEl error fue creer\nque lo que dejábamos\nseguía existiendo.", timestamp: 2 }
@@ -60,15 +56,23 @@
 
         // --- INTENTO DE CONEXIÓN A NUBE ---
         try {
-            // Inicializamos Firebase con la config manual
-            // Nota: Si apiKey sigue siendo el placeholder, fallará y pasará a modo local
-            if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "AIzaSyDtMIZq6XxcdcRmui6BjHvgb25w2EW5fTw") {
+            if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("TU_API_KEY_FIREBASE")) {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
                 
-                // Autenticación Anónima
-                await signInAnonymously(auth);
+                // Intentar autenticación anónima
+                signInAnonymously(auth).catch((error) => {
+                    console.error("Error Auth:", error);
+                    // Manejo específico del error que estás recibiendo
+                    if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed' || error.code === 'auth/admin-restricted-operation') {
+                        console.warn("⚠️ IMPORTANTE: La autenticación anónima no está habilitada en Firebase Console.");
+                        alert("⚠️ AVISO PARA EL AUTOR:\n\nTu base de datos está conectada, pero la 'Autenticación Anónima' está desactivada en Firebase.\n\nPara arreglarlo:\n1. Ve a console.firebase.google.com\n2. Entra en tu proyecto > Autenticación (Authentication)\n3. Pestaña 'Sign-in method'\n4. Activa 'Anónimo'\n\nMientras tanto, la web funcionará en MODO LOCAL (solo tú verás los cambios).");
+                    }
+                    // Fallback a local si falla auth
+                    useLocalMode = true;
+                    subscribeToObrasLocal();
+                });
 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
@@ -77,39 +81,33 @@
                     }
                 });
             } else {
-                throw new Error("Configuración de Firebase no establecida.");
+                throw new Error("Falta configurar Firebase.");
             }
         } catch (e) {
-            console.log("⚠️ Modo Nube no disponible (Falta configuración). Activando Modo Local.", e);
+            console.log("⚠️ Modo Nube no disponible. Activando Modo Local.", e);
             useLocalMode = true;
             subscribeToObrasLocal();
         }
 
-        // --- LÓGICA DE SUSCRIPCIÓN ---
-        
-        // 1. Modo Nube (Firebase)
+        // --- SUSCRIPCIONES ---
         function subscribeToObrasCloud() {
-            // Nota: En tu proyecto propio de Firebase, la ruta es más simple:
             const colRef = collection(db, COLLECTION_NAME);
-            
             onSnapshot(colRef, (snapshot) => {
                 const tempObras = [];
                 snapshot.forEach(doc => tempObras.push({ id: doc.id, ...doc.data() }));
                 actualizarInterfaz(tempObras);
             }, (error) => {
-                console.error("Error conectando a colección, pasando a local", error);
+                console.error("Error leyendo colección (Posible falta de permisos o reglas):", error);
+                // Si falla la lectura (ej. reglas de seguridad), pasamos a local
                 useLocalMode = true;
                 subscribeToObrasLocal();
             });
         }
 
-        // 2. Modo Local (LocalStorage)
         function subscribeToObrasLocal() {
             const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
             let obrasA_Mostrar = localData.length > 0 ? localData : obrasPorDefecto;
             if (localData.length > 0) {
-                // Combinamos visualmente para que no se vea vacío
-                // Filtramos por ID para evitar duplicados si los defaults tuvieran el mismo ID
                 const idsLocales = new Set(localData.map(o => o.id));
                 const defaultsUnicos = obrasPorDefecto.filter(o => !idsLocales.has(o.id));
                 obrasA_Mostrar = [...localData, ...defaultsUnicos];
@@ -117,32 +115,54 @@
             actualizarInterfaz(obrasA_Mostrar);
         }
 
+        function actualizarInterfaz(listaObras) {
+            listaObras.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            window.obrasGlobales = listaObras; 
+            if (window.renderizarObras) window.renderizarObras(window.currentFilter || 'todos');
+        }
+
+        // --- FUNCIÓN PÚBLICA DE GUARDADO ---
+        window.guardarObraNueva = async (titulo, categoria, contenido, imagenBase64, fechaTexto) => {
+            const nuevaObra = {
+                titulo, 
+                categoria, 
+                contenido,
+                resumen: contenido.substring(0, 100) + "...",
+                fecha: fechaTexto,
+                timestamp: Date.now(),
+                imagen: imagenBase64 || null
+            };
+
             if (useLocalMode) {
                 const actuales = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
                 nuevaObra.id = Date.now();
                 actuales.unshift(nuevaObra);
                 localStorage.setItem('obras_vangogh_v2', JSON.stringify(actuales));
-                alert("✨ Guardado en Local.");
+                alert("✨ Guardado en Local (Modo sin conexión).");
                 subscribeToObrasLocal(); 
                 return true;
             } else {
-                if (!currentUser) return false;
+                if (!currentUser) {
+                    alert("No hay conexión con la base de datos (Usuario no autenticado). Se guardará en local.");
+                    useLocalMode = true;
+                    return window.guardarObraNueva(titulo, categoria, contenido, imagenBase64, fechaTexto);
+                }
                 try {
                     const colRef = collection(db, COLLECTION_NAME);
                     await addDoc(colRef, { ...nuevaObra, autorId: currentUser.uid });
                     return true;
                 } catch (e) {
-                    console.error(e);
-                    alert("Error subiendo a la nube. Guardando en local.");
+                    console.error("Error Firebase:", e);
+                    alert("Error subiendo a la nube. Guardando en local como respaldo.");
                     useLocalMode = true;
+                    // Reintentamos en local
                     return window.guardarObraNueva(titulo, categoria, contenido, imagenBase64, fechaTexto);
                 }
             }
         };
 
-        // --- BORRADO (NUEVO) ---
+        // --- BORRADO ---
         window.borrarObraGlobal = async (id) => {
-            // Protección contra borrado de ejemplos
             if (id === 1 || id === 2) {
                 alert("Los ejemplos predeterminados no se pueden borrar.");
                 return false;
@@ -174,7 +194,6 @@
     </script>
 
     <script>
-        // Limpieza de SW antiguos
         if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(r => r.forEach(sw => sw.unregister()));
 
         tailwind.config = {
@@ -430,13 +449,13 @@
         // -------------------------------------------------------------------------
         // ⚠️ ZONA DE CONFIGURACIÓN DE GEMINI (OBLIGATORIO PARA LA MUSA Y TTS)
         // -------------------------------------------------------------------------
-        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; 
-        
+        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; 
+         
         const ADMIN_PASSWORD = "vincent"; // CONTRASEÑA DE AUTOR
 
         let currentWorkId = null;
         let currentAudio = null;
-        window.obrasGlobales = []; 
+        window.obrasGlobales = []; 
 
         // --- GESTIÓN DE TEMA & ADMIN ---
         function initTheme() {
@@ -550,7 +569,7 @@
 
             if (window.guardarObraNueva) {
                 const success = await window.guardarObraNueva(titulo, categoria, contenido, finalImageBase64, fechaFormato);
-                if (success) { cerrarModalNuevo(); } 
+                if (success) { cerrarModalNuevo(); } 
                 else { btn.innerText = "Reintentar"; btn.disabled = false; }
             } else {
                 alert("Error: Módulo no cargado.");
@@ -580,7 +599,7 @@
                 reader.onerror = error => reject(error);
             });
         }
-    
+
         // --- BORRADO ---
         window.confirmarBorrado = async (id) => {
             if (!confirm("¿Estás seguro de que quieres borrar esta obra permanentemente?")) return;
@@ -699,9 +718,9 @@
         const modalBody = document.getElementById('modal-card');
         const aboutModal = document.getElementById('about-modal');
 
-        window.currentFilter = 'todos'; 
+        window.currentFilter = 'todos'; 
 
-    window.renderizarObras = function(filtro = 'todos') {
+        window.renderizarObras = function(filtro = 'todos') {
             window.currentFilter = filtro;
             galeria.innerHTML = '';
             
