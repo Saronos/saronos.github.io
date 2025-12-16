@@ -38,7 +38,6 @@
             appId: "1:332209312574:web:88ca364881d0b5d19c126f",
             measurementId: "G-4ZLVH98BV7"
         };
-        // -------------------------------------------------------------------------
 
         // --- GESTIÓN DE ESTADO ---
         let useLocalMode = false;
@@ -55,14 +54,8 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
                 
-                // Intentar autenticación anónima
                 signInAnonymously(auth).catch((error) => {
                     console.error("Error Auth:", error);
-                    // Manejo específico del error de configuración auth
-                    if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed' || error.code === 'auth/admin-restricted-operation') {
-                        console.warn("⚠️ IMPORTANTE: La autenticación anónima no está habilitada en Firebase Console.");
-                    }
-                    // Fallback a local
                     activarModoLocal();
                 });
 
@@ -93,22 +86,22 @@
                 const tempObras = [];
                 snapshot.forEach(doc => tempObras.push({ id: doc.id, ...doc.data() }));
                 actualizarInterfaz(tempObras);
-                actualizarIndicadorEstado(true); // Conectado
+                actualizarIndicadorEstado(true); 
             }, (error) => {
                 console.error("Error leyendo colección:", error);
-                if (error.code === 'permission-denied') {
-                    console.warn("⚠️ ERROR DE PERMISOS: Revisa las Reglas en Firebase Console.");
-                }
                 activarModoLocal();
             });
         }
 
         function subscribeToObrasLocal() {
+            // Accedemos a la variable global definida en el otro script
+            const defaults = window.obrasPorDefecto || [];
             const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
-            let obrasA_Mostrar = localData.length > 0 ? localData : obrasPorDefecto;
+            let obrasA_Mostrar = localData.length > 0 ? localData : defaults;
+            
             if (localData.length > 0) {
                 const idsLocales = new Set(localData.map(o => o.id));
-                const defaultsUnicos = obrasPorDefecto.filter(o => !idsLocales.has(o.id));
+                const defaultsUnicos = defaults.filter(o => !idsLocales.has(o.id));
                 obrasA_Mostrar = [...localData, ...defaultsUnicos];
             }
             actualizarInterfaz(obrasA_Mostrar);
@@ -130,12 +123,10 @@
             }
         }
 
-        // --- FUNCIÓN PÚBLICA DE GUARDADO ---
+        // --- GUARDADO ---
         window.guardarObraNueva = async (titulo, categoria, contenido, imagenBase64, fechaTexto) => {
             const nuevaObra = {
-                titulo, 
-                categoria, 
-                contenido,
+                titulo, categoria, contenido,
                 resumen: contenido.substring(0, 100) + "...",
                 fecha: fechaTexto,
                 timestamp: Date.now(),
@@ -147,23 +138,17 @@
                 nuevaObra.id = Date.now();
                 actuales.unshift(nuevaObra);
                 localStorage.setItem('obras_vangogh_v2', JSON.stringify(actuales));
-                alert("✨ Guardado en Local (Sin conexión a Nube).");
+                alert("✨ Guardado en Local.");
                 subscribeToObrasLocal(); 
                 return true;
             } else {
-                if (!currentUser) {
-                    alert("Esperando conexión...");
-                    return false;
-                }
+                if (!currentUser) { alert("Esperando conexión..."); return false; }
                 try {
                     const colRef = collection(db, COLLECTION_NAME);
                     await addDoc(colRef, { ...nuevaObra, autorId: currentUser.uid });
                     return true;
                 } catch (e) {
                     console.error("Error Firebase:", e);
-                    if (e.code === 'permission-denied') alert("Error de permisos: Revisa las Reglas en Firebase Console.");
-                    else alert("Error subiendo a la nube. Guardando en local.");
-                    
                     activarModoLocal();
                     return window.guardarObraNueva(titulo, categoria, contenido, imagenBase64, fechaTexto);
                 }
@@ -172,39 +157,27 @@
 
         // --- BORRADO ---
         window.borrarObraGlobal = async (id) => {
-            if (id === 1 || id === 2) {
-                alert("Los ejemplos predeterminados no se pueden borrar.");
-                return false;
-            }
+            if (id === 1 || id === 2) { alert("No se pueden borrar los ejemplos."); return false; }
 
             if (useLocalMode) {
                 let actuales = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
                 const filtrados = actuales.filter(o => String(o.id) !== String(id));
                 localStorage.setItem('obras_vangogh_v2', JSON.stringify(filtrados));
-                alert("🗑️ Obra eliminada del almacenamiento local.");
+                alert("🗑️ Borrado de local.");
                 subscribeToObrasLocal();
                 return true;
             } else {
-                if (!currentUser) { alert("Error de conexión."); return false; }
+                if (!currentUser) { alert("Error conexión."); return false; }
                 try {
                     await deleteDoc(doc(db, COLLECTION_NAME, String(id)));
-                    alert("🗑️ Obra eliminada de la nube.");
+                    alert("🗑️ Borrado de la nube.");
                     return true;
                 } catch (e) {
-                    console.error(e);
-                    alert("Error al borrar en la nube.");
+                    alert("Error al borrar.");
                     return false;
                 }
             }
         };
-
-        // Init
-        if (window.renderizarObras) {
-            const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
-            if(localData.length > 0) window.obrasGlobales = localData;
-            else window.obrasGlobales = obrasPorDefecto;
-            window.renderizarObras();
-        }
     </script>
 
     <script>
@@ -236,7 +209,6 @@
             --accent-primary: #2dd4bf; --accent-secondary: #a78bfa;
         }
         body { background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; transition: background-color 0.5s ease, color 0.5s ease; }
-        
         .ambient-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; overflow: hidden; background: var(--bg-color); transition: background 0.5s ease; }
         .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.6; animation: float 20s infinite ease-in-out; transition: background 0.5s ease, opacity 0.5s ease; }
         .orb-1 { width: 55vw; height: 55vw; top: -10%; left: -10%; animation-delay: 0s; }
@@ -246,11 +218,9 @@
         .orb-3 { width: 35vw; height: 35vw; top: 40%; left: 30%; animation-delay: -10s; }
         :root .orb-3 { background: #5eead4; opacity: 0.5; } .dark .orb-3 { background: #581c87; opacity: 0.3; } 
         @keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(30px, 50px) scale(1.1); } }
-
         .glass-panel { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05); transition: background 0.3s ease, border 0.3s ease; }
         .glass-card { background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .glass-card:hover { background: var(--card-hover); transform: translateY(-5px) scale(1.01); box-shadow: 0 20px 40px rgba(13, 148, 136, 0.1); border-color: var(--accent-primary); }
-        
         .glass-input { background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(0, 0, 0, 0.1); color: inherit; }
         .dark .glass-input { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; }
         .active-nav { background: var(--card-hover); color: var(--accent-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.05); font-weight: 600; }
@@ -266,44 +236,26 @@
 </head>
 <body class="font-sans antialiased selection:bg-teal-300 selection:text-teal-900">
 
-    <div class="ambient-bg">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-    </div>
+    <div class="ambient-bg"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
-    <!-- Navegación -->
     <nav class="fixed top-6 left-1/2 transform -translate-x-1/2 w-[95%] md:w-[90%] max-w-4xl z-50">
         <div class="glass-panel rounded-full px-4 md:px-6 py-3 flex justify-between items-center shadow-lg">
             <span class="font-serif text-2xl font-bold tracking-wide cursor-pointer flex items-center gap-1" onclick="window.scrollTo({top:0, behavior:'smooth'})">
                 srodrigarci<span class="text-accent text-3xl">.</span>
             </span>
-            
             <div class="hidden md:flex gap-2">
                 <button onclick="filtrarObras('todos')" class="nav-btn px-4 py-1.5 rounded-full text-sm transition-all active-nav" id="btn-todos">Todo</button>
                 <button onclick="filtrarObras('Poesía')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-poesia">Poesía</button>
                 <button onclick="filtrarObras('Relato')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-relato">Relatos</button>
                 <button onclick="filtrarObras('Microcuentos')" class="nav-btn px-4 py-1.5 rounded-full text-sm text-muted hover:text-accent transition-all hover:bg-white/10" id="btn-microcuentos">Micros</button>
             </div>
-
             <div class="flex items-center gap-2 md:gap-3">
-                <!-- Botón AÑADIR -->
-                <button onclick="abrirModalNuevo()" id="btn-add-work" class="hidden w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-accent border border-transparent hover:border-accent/30 bg-teal-50 dark:bg-white/5" title="Añadir nueva obra">
-                    <i class="ph-bold ph-plus text-xl"></i>
-                </button>
-
-                <button onclick="toggleTheme()" id="theme-btn" class="w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-amber-500 dark:text-yellow-300">
-                    <i class="ph-fill ph-sun text-xl" id="theme-icon"></i>
-                </button>
-                <button onclick="invocarMusa()" class="w-10 h-10 rounded-full bg-gradient-to-tr from-teal-400 to-blue-500 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-md group relative">
-                    <i class="ph-fill ph-sparkle text-lg"></i>
-                </button>
-                <button onclick="openAbout()" class="w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-muted">
-                    <i class="ph ph-user text-lg"></i>
-                </button>
+                <button onclick="abrirModalNuevo()" id="btn-add-work" class="hidden w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-accent border border-transparent hover:border-accent/30 bg-teal-50 dark:bg-white/5" title="Añadir nueva obra"><i class="ph-bold ph-plus text-xl"></i></button>
+                <button onclick="toggleTheme()" id="theme-btn" class="w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-amber-500 dark:text-yellow-300"><i class="ph-fill ph-sun text-xl" id="theme-icon"></i></button>
+                <button onclick="invocarMusa()" class="w-10 h-10 rounded-full bg-gradient-to-tr from-teal-400 to-blue-500 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-md group relative"><i class="ph-fill ph-sparkle text-lg"></i></button>
+                <button onclick="openAbout()" class="w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-muted"><i class="ph ph-user text-lg"></i></button>
             </div>
         </div>
-        
         <div class="md:hidden flex justify-center gap-3 mt-4 glass-panel py-2 px-6 rounded-full mx-auto w-fit scale-90 overflow-x-auto">
              <button onclick="filtrarObras('todos')" class="text-xs font-bold uppercase tracking-wider text-accent shrink-0">Todo</button>
              <button onclick="filtrarObras('Poesía')" class="text-xs font-bold uppercase tracking-wider text-muted shrink-0">Poesía</button>
@@ -312,37 +264,23 @@
         </div>
     </nav>
 
-    <!-- Main -->
     <main class="container mx-auto px-6 pt-40 pb-20 max-w-6xl min-h-screen">
         <div class="text-center mb-20 fade-in-up">
             <h1 class="font-serif text-5xl md:text-7xl lg:text-8xl mb-6 tracking-tight leading-none text-main">
-                Palabras en <br>
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-blue-600 to-indigo-600 dark:from-teal-300 dark:via-blue-300 dark:to-purple-400 animate-pulse">Suspensión</span>
+                Palabras en <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-blue-600 to-indigo-600 dark:from-teal-300 dark:via-blue-300 dark:to-purple-400 animate-pulse">Suspensión</span>
             </h1>
-            <p class="text-lg text-muted font-light max-w-xl mx-auto">
-                Un archivo vivo de turquesas y violetas. Donde la poesía respira y las historias encuentran su reflejo.
-            </p>
+            <p class="text-lg text-muted font-light max-w-xl mx-auto">Un archivo vivo de turquesas y violetas. Donde la poesía respira y las historias encuentran su reflejo.</p>
         </div>
-
         <div id="musa-container" class="hidden mb-16 mx-auto max-w-2xl fade-in-up">
             <div class="glass-panel p-8 rounded-2xl relative border border-teal-500/20 shadow-glow">
                 <button onclick="cerrarMusa()" class="absolute top-4 right-4 text-muted hover:text-accent transition-colors"><i class="ph ph-x"></i></button>
-                <div class="flex items-center gap-3 mb-4 text-accent">
-                    <i class="ph-fill ph-magic-wand text-xl"></i>
-                    <span class="text-xs font-bold uppercase tracking-widest">La Musa Dice</span>
-                </div>
+                <div class="flex items-center gap-3 mb-4 text-accent"><i class="ph-fill ph-magic-wand text-xl"></i><span class="text-xs font-bold uppercase tracking-widest">La Musa Dice</span></div>
                 <div id="musa-content" class="text-xl md:text-2xl font-serif leading-relaxed italic text-center px-4 text-main">Conectando...</div>
-                <div class="text-center mt-6">
-                    <button id="btn-regenerar-musa" onclick="invocarMusa()" class="hidden text-xs text-muted hover:text-accent font-bold uppercase tracking-widest transition-colors">Pedir otra idea</button>
-                </div>
+                <div class="text-center mt-6"><button id="btn-regenerar-musa" onclick="invocarMusa()" class="hidden text-xs text-muted hover:text-accent font-bold uppercase tracking-widest transition-colors">Pedir otra idea</button></div>
             </div>
         </div>
-
         <div id="galeria-obras" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
-        <div id="no-results" class="hidden text-center py-32">
-            <div class="text-6xl mb-4 opacity-20 grayscale">🌫️</div>
-            <p class="text-muted font-serif text-xl italic">El vacío también es parte de la obra.</p>
-        </div>
+        <div id="no-results" class="hidden text-center py-32"><div class="text-6xl mb-4 opacity-20 grayscale">🌫️</div><p class="text-muted font-serif text-xl italic">El vacío también es parte de la obra.</p></div>
     </main>
 
     <footer class="text-center py-12 relative z-10">
@@ -357,7 +295,7 @@
         <p class="mt-6 text-xs text-muted uppercase tracking-widest">© 2025 • Van Gogh Edition</p>
     </footer>
 
-    <!-- MODAL AÑADIR (Protegido) -->
+    <!-- MODAL AÑADIR -->
     <div id="add-modal" class="fixed inset-0 z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="cerrarModalNuevo()"></div>
         <div id="add-modal-card" class="glass-panel w-full max-w-lg rounded-2xl relative transform scale-95 transition-transform bg-white/95 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -366,46 +304,31 @@
                 <button onclick="cerrarModalNuevo()" class="text-muted hover:text-red-500"><i class="ph-bold ph-x"></i></button>
             </div>
             <div class="p-6 overflow-y-auto space-y-4">
-                <p class="text-xs text-center text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-900 mb-4">
-                    Zona restringida. Se requerirá contraseña al publicar.
-                </p>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Título</label>
-                    <input type="text" id="new-title" class="glass-input w-full rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="Ej: Atardecer en Arles">
-                </div>
+                <p class="text-xs text-center text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-900 mb-4">Zona restringida. Se requerirá contraseña al publicar.</p>
+                <div><label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Título</label><input type="text" id="new-title" class="glass-input w-full rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="Ej: Atardecer en Arles"></div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Categoría</label>
                     <div class="relative">
                         <select id="new-category" class="glass-input w-full rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none pr-10 cursor-pointer">
-                            <option value="Poesía">Poesía</option>
-                            <option value="Relato">Relato</option>
-                            <option value="Microcuentos">Microcuentos</option>
+                            <option value="Poesía">Poesía</option><option value="Relato">Relato</option><option value="Microcuentos">Microcuentos</option>
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-muted"><i class="ph-fill ph-caret-down"></i></div>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Imagen / Manuscrito</label>
+                    <label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Imagen</label>
                     <div class="relative group cursor-pointer">
                         <input type="file" id="new-image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="previewImage(this)">
-                        <div class="glass-input rounded-lg px-4 py-6 text-center border-dashed border-2 border-gray-300 dark:border-gray-600 group-hover:border-teal-400 transition-colors" id="image-drop-area">
-                            <i class="ph-fill ph-camera text-2xl text-muted mb-2"></i>
-                            <p class="text-sm text-muted" id="image-label">Haz clic para subir foto (Max 1MB)</p>
-                        </div>
+                        <div class="glass-input rounded-lg px-4 py-6 text-center border-dashed border-2 border-gray-300 dark:border-gray-600 group-hover:border-teal-400 transition-colors" id="image-drop-area"><i class="ph-fill ph-camera text-2xl text-muted mb-2"></i><p class="text-sm text-muted" id="image-label">Haz clic para subir foto</p></div>
                         <img id="image-preview" class="hidden w-full h-48 object-cover rounded-lg mt-2 shadow-md">
                         <button id="remove-image" onclick="removeImage(event)" class="hidden absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 z-20 shadow"><i class="ph-bold ph-x"></i></button>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Contenido / Transcripción</label>
-                    <textarea id="new-content" rows="6" class="glass-input w-full rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="Escribe aquí tu texto..."></textarea>
-                </div>
+                <div><label class="block text-xs font-bold uppercase tracking-widest text-muted mb-1">Contenido</label><textarea id="new-content" rows="6" class="glass-input w-full rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="Escribe aquí tu texto..."></textarea></div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex justify-end gap-3">
                 <button onclick="cerrarModalNuevo()" class="px-4 py-2 rounded-lg text-sm font-bold text-muted hover:bg-gray-200/50 transition-colors">Cancelar</button>
-                <button id="btn-save-cloud" onclick="processAndSave()" class="px-6 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-teal-500 to-blue-500 hover:shadow-lg hover:scale-105 transition-all">
-                    <i class="ph-bold ph-lock-key"></i> Publicar
-                </button>
+                <button id="btn-save-cloud" onclick="processAndSave()" class="px-6 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-teal-500 to-blue-500 hover:shadow-lg hover:scale-105 transition-all"><i class="ph-bold ph-lock-key"></i> Publicar</button>
             </div>
         </div>
     </div>
@@ -435,9 +358,7 @@
                         </div>
                         <h2 id="modal-title" class="font-serif text-4xl md:text-5xl mb-4 text-center leading-tight text-accent">Título</h2>
                         <div class="flex justify-center mb-12"><span id="modal-date" class="text-xs text-muted font-medium bg-white/50 dark:bg-white/5 px-3 py-1 rounded-full border border-gray-100 dark:border-white/10">Fecha</span></div>
-                        <div id="modal-image-container" class="hidden mb-10 flex justify-center">
-                             <img id="modal-image" class="rounded-lg shadow-lg max-h-[500px] object-contain border-4 border-white dark:border-white/10 bg-white transform rotate-1 hover:rotate-0 transition-transform duration-500">
-                        </div>
+                        <div id="modal-image-container" class="hidden mb-10 flex justify-center"><img id="modal-image" class="rounded-lg shadow-lg max-h-[500px] object-contain border-4 border-white dark:border-white/10 bg-white transform rotate-1 hover:rotate-0 transition-transform duration-500"></div>
                         <div id="modal-body" class="font-serif text-xl md:text-2xl leading-loose text-main"></div>
                         <div class="mt-20 flex justify-center opacity-30 text-accent"><i class="ph-fill ph-asterisk text-2xl"></i></div>
                     </div>
@@ -446,39 +367,20 @@
         </div>
     </div>
 
-    <!-- MODAL ABOUT -->
-    <div id="about-modal" class="fixed inset-0 z-[60] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/20 dark:bg-black/60 backdrop-blur-sm" onclick="closeAbout()"></div>
-        <div class="glass-panel w-full max-w-md p-8 rounded-3xl relative transform scale-95 transition-transform bg-white/90 dark:bg-slate-900/90">
-            <button onclick="closeAbout()" class="absolute top-4 right-4 text-muted hover:text-accent"><i class="ph ph-x text-xl"></i></button>
-            <div class="text-center">
-                <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-teal-200 to-blue-300 mx-auto mb-6 p-1 shadow-glass">
-                    <img src="/api/placeholder/150/150" class="w-full h-full rounded-full object-cover border-2 border-white dark:border-slate-700">
-                </div>
-                <h3 class="font-serif text-2xl font-bold mb-2">El Autor</h3>
-                <p class="text-muted text-sm leading-relaxed mb-6">Escribiendo código y poesía desde algún lugar entre la pantalla y el papel.</p>
-                <button onclick="closeAbout()" class="text-xs font-bold text-accent uppercase tracking-widest hover:underline">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        // -------------------------------------------------------------------------
-        // ⚠️ ZONA DE CONFIGURACIÓN DE GEMINI (OBLIGATORIO PARA LA MUSA Y TTS)
-        // -------------------------------------------------------------------------
-        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; 
-        
-        const ADMIN_PASSWORD = "vincent"; // CONTRASEÑA DE AUTOR
+        const apiKey = "AIzaSyA0d_UzHRmrMOOw9WTfKB-xurL8ku8cibU"; // API Key de Gemini
 
-        // Obras por defecto - Definidas AQUÍ en el script global para que sean accesibles
-        const obrasPorDefecto = [
-            { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...", contenido: "El sonido de la cafetera era lo único que rompía el silencio de la cocina a las tres de la mañana. No es que tuviera insomnio, es que la ciudad se siente diferente cuando nadie la mira.", timestamp: 1 },
-            { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás no fue el error...", contenido: "Mirar atrás\nno fue el error.\nEl error fue creer\nque lo que dejábamos\nseguía existiendo.", timestamp: 2 }
+        // --- DEFAULTS ---
+        window.obrasPorDefecto = [
+            { id: 1, titulo: "Café de Medianoche", categoria: "Relato", fecha: "23 Nov 2025", resumen: "El sonido de la cafetera...", contenido: "El sonido de la cafetera era lo único que rompía el silencio de la cocina...", timestamp: 1 },
+            { id: 2, titulo: "Estatua de Sal", categoria: "Poesía", fecha: "20 Nov 2025", resumen: "Mirar atrás...", contenido: "Mirar atrás\nno fue el error.", timestamp: 2 }
         ];
+
+        const ADMIN_PASSWORD = "vincent";
 
         let currentWorkId = null;
         let currentAudio = null;
-        window.obrasGlobales = []; 
+        window.obrasGlobales = [];
 
         // --- GESTIÓN DE TEMA & ADMIN ---
         function initTheme() {
@@ -492,8 +394,6 @@
                     event.matches ? (document.documentElement.classList.add('dark'), updateThemeIcon(true)) : (document.documentElement.classList.remove('dark'), updateThemeIcon(false));
                 }
             });
-
-            // Lógica de Admin
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('admin')) localStorage.setItem('isAdmin', 'true');
             if (localStorage.getItem('isAdmin') === 'true') {
@@ -513,28 +413,18 @@
             icon.classList.add(isDark ? 'ph-moon-stars' : 'ph-sun');
         }
 
-        // --- UI AÑADIR NUEVA OBRA ---
+        // --- UI ---
         const addModal = document.getElementById('add-modal');
         const addModalCard = document.getElementById('add-modal-card');
         let currentImageFile = null;
 
-        function abrirModalNuevo() {
-            addModal.classList.remove('hidden');
-            setTimeout(() => { addModal.classList.remove('opacity-0'); addModalCard.classList.remove('scale-95'); addModalCard.classList.add('scale-100'); }, 10);
-        }
-        function cerrarModalNuevo() {
-            addModal.classList.add('opacity-0'); addModalCard.classList.remove('scale-100'); addModalCard.classList.add('scale-95');
-            setTimeout(() => { addModal.classList.add('hidden'); limpiarFormulario(); }, 300);
-        }
+        function abrirModalNuevo() { addModal.classList.remove('hidden'); setTimeout(() => { addModal.classList.remove('opacity-0'); addModalCard.classList.remove('scale-95'); addModalCard.classList.add('scale-100'); }, 10); }
+        function cerrarModalNuevo() { addModal.classList.add('opacity-0'); addModalCard.classList.remove('scale-100'); addModalCard.classList.add('scale-95'); setTimeout(() => { addModal.classList.add('hidden'); limpiarFormulario(); }, 300); }
+        
         function limpiarFormulario() {
-            document.getElementById('new-title').value = '';
-            document.getElementById('new-content').value = '';
-            document.getElementById('new-image').value = '';
-            document.getElementById('image-preview').classList.add('hidden');
-            document.getElementById('image-drop-area').classList.remove('hidden');
-            document.getElementById('remove-image').classList.add('hidden');
-            document.getElementById('btn-save-cloud').innerHTML = '<i class="ph-bold ph-lock-key"></i> Publicar';
-            document.getElementById('btn-save-cloud').disabled = false;
+            document.getElementById('new-title').value = ''; document.getElementById('new-content').value = ''; document.getElementById('new-image').value = '';
+            document.getElementById('image-preview').classList.add('hidden'); document.getElementById('image-drop-area').classList.remove('hidden'); document.getElementById('remove-image').classList.add('hidden');
+            document.getElementById('btn-save-cloud').innerHTML = '<i class="ph-bold ph-lock-key"></i> Publicar'; document.getElementById('btn-save-cloud').disabled = false;
             currentImageFile = null;
         }
 
@@ -543,104 +433,59 @@
                 currentImageFile = input.files[0];
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    const preview = document.getElementById('image-preview');
-                    preview.src = e.target.result;
-                    preview.classList.remove('hidden');
-                    document.getElementById('image-drop-area').classList.add('hidden');
-                    document.getElementById('remove-image').classList.remove('hidden');
+                    const preview = document.getElementById('image-preview'); preview.src = e.target.result;
+                    preview.classList.remove('hidden'); document.getElementById('image-drop-area').classList.add('hidden'); document.getElementById('remove-image').classList.remove('hidden');
                 }
                 reader.readAsDataURL(input.files[0]);
             }
         }
-        function removeImage(e) {
-            e.stopPropagation();
-            document.getElementById('new-image').value = '';
-            currentImageFile = null;
-            document.getElementById('image-preview').classList.add('hidden');
-            document.getElementById('image-drop-area').classList.remove('hidden');
-            document.getElementById('remove-image').classList.add('hidden');
-        }
+        function removeImage(e) { e.stopPropagation(); document.getElementById('new-image').value = ''; currentImageFile = null; document.getElementById('image-preview').classList.add('hidden'); document.getElementById('image-drop-area').classList.remove('hidden'); document.getElementById('remove-image').classList.add('hidden'); }
 
         async function processAndSave() {
-            const titulo = document.getElementById('new-title').value;
-            const categoria = document.getElementById('new-category').value;
-            const contenido = document.getElementById('new-content').value;
-
+            const titulo = document.getElementById('new-title').value; const categoria = document.getElementById('new-category').value; const contenido = document.getElementById('new-content').value;
             if (!titulo || !contenido) { alert("Título y contenido obligatorios."); return; }
-
             const userPass = prompt("🔐 Seguridad: Por favor, introduce la contraseña de autor:");
-            if (userPass !== ADMIN_PASSWORD) { alert("⛔ Contraseña incorrecta. Acceso denegado."); return; }
-
-            const btn = document.getElementById('btn-save-cloud');
-            btn.innerText = "Procesando...";
-            btn.disabled = true;
-
-            const now = new Date();
-            const fechaFormato = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-
+            if (userPass !== ADMIN_PASSWORD) { alert("⛔ Contraseña incorrecta."); return; }
+            const btn = document.getElementById('btn-save-cloud'); btn.innerText = "Procesando..."; btn.disabled = true;
+            const now = new Date(); const fechaFormato = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
             let finalImageBase64 = null;
             if (currentImageFile) {
-                try {
-                    finalImageBase64 = await resizeImage(currentImageFile);
-                } catch (err) {
-                    console.error("Error resizing", err);
-                    alert("Error procesando imagen");
-                    btn.innerText = "Publicar"; btn.disabled = false;
-                    return;
-                }
+                try { finalImageBase64 = await resizeImage(currentImageFile); } 
+                catch (err) { alert("Error imagen"); btn.innerText = "Publicar"; btn.disabled = false; return; }
             }
-
             if (window.guardarObraNueva) {
                 const success = await window.guardarObraNueva(titulo, categoria, contenido, finalImageBase64, fechaFormato);
-                if (success) { cerrarModalNuevo(); } 
-                else { btn.innerText = "Reintentar"; btn.disabled = false; }
-            } else {
-                alert("Error: Módulo no cargado.");
-            }
+                if (success) { cerrarModalNuevo(); } else { btn.innerText = "Reintentar"; btn.disabled = false; }
+            } else { alert("Error: Módulo no cargado."); }
         }
 
         function resizeImage(file) {
             return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
+                const reader = new FileReader(); reader.readAsDataURL(file);
                 reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target.result;
+                    const img = new Image(); img.src = event.target.result;
                     img.onload = () => {
-                        const elem = document.createElement('canvas');
-                        const maxWidth = 800; const maxHeight = 800;
+                        const elem = document.createElement('canvas'); const maxWidth = 800; const maxHeight = 800;
                         let width = img.width; let height = img.height;
-                        if (width > height) { if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; } }
-                        else { if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; } }
+                        if (width > height) { if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; } } else { if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; } }
                         elem.width = width; elem.height = height;
-                        const ctx = elem.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        resolve(elem.toDataURL('image/jpeg', 0.7));
-                    };
-                    img.onerror = error => reject(error);
-                };
-                reader.onerror = error => reject(error);
+                        const ctx = elem.getContext('2d'); ctx.drawImage(img, 0, 0, width, height); resolve(elem.toDataURL('image/jpeg', 0.7));
+                    }; img.onerror = error => reject(error);
+                }; reader.onerror = error => reject(error);
             });
         }
 
-        // --- BORRADO ---
         window.confirmarBorrado = async (id) => {
-            if (!confirm("¿Estás seguro de que quieres borrar esta obra permanentemente?")) return;
-            
-            const pass = prompt("🔐 Confirma con tu contraseña de autor:");
-            if (pass !== ADMIN_PASSWORD) {
-                alert("⛔ Contraseña incorrecta.");
-                return;
-            }
-            
-            if (window.borrarObraGlobal) {
-                await window.borrarObraGlobal(id);
-            }
+            if (!confirm("¿Borrar permanentemente?")) return;
+            const pass = prompt("🔐 Contraseña de autor:");
+            if (pass !== ADMIN_PASSWORD) { alert("⛔ Contraseña incorrecta."); return; }
+            if (window.borrarObraGlobal) await window.borrarObraGlobal(id);
         }
 
         // --- LÓGICA IA ---
-        async function callGeminiAPI(payload, isTTS = false) {
-            const model = isTTS ? 'gemini-2.5-flash-preview-tts' : 'gemini-2.5-flash-preview-09-2025';
+        async function callGeminiAPI(payload) {
+            // Modelo estable público
+            const model = 'gemini-1.5-flash';
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
             const delays = [1000, 2000, 4000];
             for (let i = 0; i <= delays.length; i++) {
@@ -653,10 +498,7 @@
         }
 
         async function invocarMusa() {
-            if (!apiKey || apiKey.length < 10) {
-                alert("⚠️ Necesitas configurar tu API Key de Gemini en el código para usar esta función.");
-                return;
-            }
+            if (!apiKey) { alert("Falta API Key"); return; }
             const container = document.getElementById('musa-container');
             const content = document.getElementById('musa-content');
             const btnRegenerar = document.getElementById('btn-regenerar-musa');
@@ -671,10 +513,7 @@
         function cerrarMusa() { document.getElementById('musa-container').classList.add('hidden'); }
 
         async function analizarObraActual() {
-            if (!apiKey || apiKey.length < 10) {
-                alert("⚠️ Necesitas configurar tu API Key de Gemini en el código para usar esta función.");
-                return;
-            }
+            if (!apiKey) { alert("Falta API Key"); return; }
             const obra = window.obrasGlobales.find(o => o.id === currentWorkId);
             if (!obra) return;
             const contentDiv = document.getElementById('ai-analysis-text');
@@ -686,53 +525,31 @@
             } catch (error) { contentDiv.innerHTML = "No pude visualizar la obra ahora."; }
         }
 
-        async function leerObraEnVozAlta() {
-            if (!apiKey || apiKey.length < 10) {
-                alert("⚠️ Necesitas configurar tu API Key de Gemini en el código para usar esta función.");
-                return;
-            }
+        // FALLBACK HÍBRIDO DE VOZ: Intentar navegador siempre primero para fiabilidad en GH Pages
+        function leerObraEnVozAlta() {
             const obra = window.obrasGlobales.find(o => o.id === currentWorkId);
             if (!obra) return;
             const btn = document.getElementById('btn-tts');
-            if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>'; return; }
-            btn.innerHTML = '<i class="ph-fill ph-spinner animate-spin"></i>';
-            try {
-                const data = await callGeminiAPI({ 
-                    contents: [{ parts: [{ text: obra.contenido }] }], 
-                    generationConfig: { 
-                        responseModalities: ["AUDIO"], 
-                        speechConfig: { 
-                            voiceConfig: { 
-                                prebuiltVoiceConfig: { 
-                                    voiceName: "Fenrir" // Voz masculina profunda
-                                } 
-                            } 
-                        } 
-                    } 
-                }, true);
-                const binaryString = window.atob(data.candidates[0].content.parts[0].inlineData.data);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-                const wavBytes = pcmToWav(bytes, 24000);
-                const blob = new Blob([wavBytes], { type: 'audio/wav' });
-                currentAudio = new Audio(URL.createObjectURL(blob));
-                currentAudio.play();
-                btn.innerHTML = '<i class="ph-fill ph-stop"></i>';
-                currentAudio.onended = () => { btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>'; currentAudio = null; };
-            } catch (error) { btn.innerHTML = '<i class="ph-bold ph-warning"></i>'; }
-        }
 
-        function pcmToWav(pcmData, sampleRate) {
-            const buffer = new ArrayBuffer(44 + pcmData.length);
-            const view = new DataView(buffer);
-            const writeString = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
-            writeString(0, 'RIFF'); view.setUint32(4, 36 + pcmData.length, true); writeString(8, 'WAVE');
-            writeString(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
-            view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
-            writeString(36, 'data'); view.setUint32(40, pcmData.length, true);
-            new Uint8Array(buffer).set(new Uint8Array(pcmData), 44);
-            return buffer;
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>';
+                return;
+            }
+
+            btn.innerHTML = '<i class="ph-fill ph-spinner animate-spin"></i>';
+            
+            const utterance = new SpeechSynthesisUtterance(obra.contenido);
+            // Intentar buscar voz de español de españa masculina (aproximación)
+            const voices = window.speechSynthesis.getVoices();
+            const esVoice = voices.find(v => v.lang.includes('es-ES') && (v.name.includes('Male') || v.name.includes('Google') || v.name.includes('Microsoft')));
+            if (esVoice) utterance.voice = esVoice;
+            
+            utterance.onend = () => { btn.innerHTML = '<i class="ph-fill ph-speaker-high"></i>'; };
+            utterance.onerror = () => { btn.innerHTML = '<i class="ph-bold ph-warning"></i>'; };
+
+            window.speechSynthesis.speak(utterance);
+            btn.innerHTML = '<i class="ph-fill ph-stop"></i>';
         }
 
         // --- RENDER UI ---
@@ -746,7 +563,6 @@
         window.renderizarObras = function(filtro = 'todos') {
             window.currentFilter = filtro;
             galeria.innerHTML = '';
-            
             document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('active-nav'); btn.classList.add('text-muted'); });
             let activeBtnId = 'btn-todos';
             if (filtro === 'Poesía') activeBtnId = 'btn-poesia';
@@ -767,10 +583,8 @@
                     el.className = 'glass-card p-8 rounded-2xl cursor-pointer flex flex-col h-full group fade-in-up relative';
                     el.style.animationDelay = `${i * 50}ms`;
                     el.onclick = () => abrirLectura(obra.id);
-                    
                     const imgBadge = obra.imagen ? '<span class="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full"><i class="ph-bold ph-image"></i></span>' : '';
                     
-                    // Botón borrar (Solo si es admin)
                     const isAdmin = localStorage.getItem('isAdmin') === 'true';
                     let deleteBtn = '';
                     if (isAdmin) {
@@ -818,7 +632,7 @@
         }
 
         function closeReader() {
-            if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+            if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
             modal.classList.add('opacity-0'); modalBody.classList.remove('scale-100'); modalBody.classList.add('scale-95');
             setTimeout(() => { modal.classList.add('hidden'); document.body.style.overflow = ''; }, 500);
         }
@@ -842,12 +656,6 @@
         document.addEventListener('keydown', (e) => { if(e.key === "Escape") { closeReader(); window.closeAbout(); cerrarModalNuevo(); } });
 
         initTheme();
-        if (window.renderizarObras) {
-            const localData = JSON.parse(localStorage.getItem('obras_vangogh_v2')) || [];
-            if(localData.length > 0) window.obrasGlobales = localData;
-            else window.obrasGlobales = obrasPorDefecto;
-            window.renderizarObras();
-        }
         
     </script>
 </body>
